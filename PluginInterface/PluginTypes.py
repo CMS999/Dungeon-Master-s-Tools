@@ -14,7 +14,7 @@ class MainPlugin(IPlugin, ABC):
 	def drawTabOnScreen(self, tab: QWidget) -> bool:
 		""" Recives the tab widget so it can add it's on widget, return True if something was made with the tab """
 		return False
-	
+
 	@abstractmethod
 	def drawToolBarOnScreen(self, toolBar: QToolBar) -> bool:
 		""" Recives the toolbar widget so it can add it's on widgets, return True if something was made with the toolBar """

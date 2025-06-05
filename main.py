@@ -21,7 +21,7 @@ class MainWindow(QMainWindow):
         self.loadPlugins()
         self.createTabs()
         self.addToolBars()
-    
+
     def loadPlugins(self) -> None:
         self.PluginManager.setPluginPlaces([os.getcwd()+"/Modules"])
         self.PluginManager.setCategoriesFilter({
@@ -46,7 +46,7 @@ class MainWindow(QMainWindow):
             newToolBar.setMovable(False)
             self.addToolBar(newToolBar)
             self.toolList.append(newToolBar)
-        
+
         if len(self.toolList) > 0:
             self.toolList[0].show()
 
@@ -54,7 +54,7 @@ class MainWindow(QMainWindow):
         for index, bar in enumerate(self.toolList):
             self.toolList[index].hide()
         self.toolList[self.ui.Tabs.currentIndex()].show()
-    
+
 if __name__ == "__main__":
     app = QApplication([])
     window = MainWindow()

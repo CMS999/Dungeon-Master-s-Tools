@@ -26,7 +26,7 @@ class Compendium(Ptypes.MainPlugin):
 		for category in Categories:
 			ddiFilter.addItem(category.value, category)
 		toolBar.addWidget(ddiFilter)
-			
+
 		searchBox = QLineEdit()
 		searchBox.setMinimumSize(150,15)
 		searchBox.setMaximumSize(150,35)
