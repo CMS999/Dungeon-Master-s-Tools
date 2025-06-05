@@ -1,0 +1,12 @@
+/sql
+/Lixo
+/pickles
+/build
+/dist
+/__pycache__
+**/*/__pycache__
+*.ui
+*.spec
+main
+*.sql
+*.html
