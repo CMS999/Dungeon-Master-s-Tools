@@ -1,0 +1,13 @@
+# TO-DO List
+- [ ] Create class to handle all file strings, base64 images and any type of string swaps (like regex);
+- [x] Create method(s) in MainScreenView to handle model inicialization;
+- [ ] Rework Context Menu logic to Handle action additon of new action by function call;
+- [ ] Integrate PickleJar logic inside MainScreenView;
+- [x] Create new Class to handle all html rendering;
+- [ ] Rework MainScreenView filtering logic;
+- [ ] Integrate MainScreenView inside main aplication (a.k.a. stop beign a plugin);
+- [ ] Define main.py API for handling compendium data calls, contexts menu action, tool bars and others...;
+- [ ] Define directory scruture for ui files and their pythons counter-parts;
+- [ ] Expand plugin interfaces for different use cases;
+- [ ] Do performance analising;
+- [ ] Refactor Enum logic;
