@@ -1,5 +1,5 @@
-from . import Files, Types
-from .ddiObjects import *
+from .DDIDataStructures import *
+
 
 from threading import Thread
 from queue import Queue
@@ -12,10 +12,10 @@ class Parser:
 		self.files = Files
 		self.stripHTML = ["\\r", "\\n", "\\"]
 
-	def fileParse(self, file, list: dict, sQueue: Queue):
+	def fileParse(self, file: Files, list: dict, sQueue: Queue):
 		linesInFile = []
 		try:
-			with open(self.sqlPath + file.value, 'r') as ddiFile:
+			with open(self.sqlPath + file.file, 'r') as ddiFile:
 				for lineOfFile in ddiFile:
 					if lineOfFile.startswith("INSERT"):
 						lineOfFile = lineOfFile.strip()
@@ -23,51 +23,51 @@ class Parser:
 						lineOfFileEnd = len(lineOfFile)-3
 						linesInFile.append(lineOfFile[lineOfFileStart:lineOfFileEnd])
 		except:
-			print("No such file:" + self.sqlPath + file.value)
+			print("No such file:" + self.sqlPath + file.file)
 
 		for lineOfFile in linesInFile:
 			lineTokens = lineOfFile.split("','")
 			match file.type:
 				case Types.ASSOCIATE:
-					list[file.type.value].append(self.associateParse(lineTokens, Types.ASSOCIATE))
+					list[file.type.title].append(self.associateParse(lineTokens, Types.ASSOCIATE))
 				case Types.BACKGROUND:
-					list[file.type.value].append(self.backgroundParse(lineTokens, Types.BACKGROUND))
+					list[file.type.title].append(self.backgroundParse(lineTokens, Types.BACKGROUND))
 				case Types.CLASS:
-					list[file.type.value].append(self.classParse(lineTokens, Types.CLASS))
+					list[file.type.title].append(self.classParse(lineTokens, Types.CLASS))
 				case Types.COMPANION:
-					list[file.type.value].append(self.companionParse(lineTokens, Types.COMPANION))
+					list[file.type.title].append(self.companionParse(lineTokens, Types.COMPANION))
 				case Types.DEITY:
-					list[file.type.value].append(self.deityParse(lineTokens, Types.DEITY))
+					list[file.type.title].append(self.deityParse(lineTokens, Types.DEITY))
 				case Types.DISEASE:
-					list[file.type.value].append(self.diseaseParse(lineTokens, Types.DISEASE))
+					list[file.type.title].append(self.diseaseParse(lineTokens, Types.DISEASE))
 				case Types.EPICDESTINY:
-					list[file.type.value].append(self.epicdestinyParse(lineTokens, Types.EPICDESTINY))
+					list[file.type.title].append(self.epicdestinyParse(lineTokens, Types.EPICDESTINY))
 				case Types.FEAT:
-					list[file.type.value].append(self.featParse(lineTokens, Types.FEAT))
+					list[file.type.title].append(self.featParse(lineTokens, Types.FEAT))
 				case Types.GLOSSARY:
-					list[file.type.value].append(self.glossaryParse(lineTokens, Types.GLOSSARY))
+					list[file.type.title].append(self.glossaryParse(lineTokens, Types.GLOSSARY))
 				case Types.ITEM:
-					list[file.type.value].append(self.itemParse(lineTokens, Types.ITEM))
+					list[file.type.title].append(self.itemParse(lineTokens, Types.ITEM))
 				case Types.MONSTER:
-					list[file.type.value].append(self.monsterParse(lineTokens, Types.MONSTER))
+					list[file.type.title].append(self.monsterParse(lineTokens, Types.MONSTER))
 				case Types.PARAGONPATH:
-					list[file.type.value].append(self.paragonpathParse(lineTokens, Types.PARAGONPATH))
+					list[file.type.title].append(self.paragonpathParse(lineTokens, Types.PARAGONPATH))
 				case Types.POISON:
-					list[file.type.value].append(self.poisonParse(lineTokens, Types.POISON))
+					list[file.type.title].append(self.poisonParse(lineTokens, Types.POISON))
 				case Types.POWER:
-					list[file.type.value].append(self.powerParse(lineTokens, Types.POWER))
+					list[file.type.title].append(self.powerParse(lineTokens, Types.POWER))
 				case Types.RACE:
-					list[file.type.value].append(self.raceParse(lineTokens, Types.RACE))
+					list[file.type.title].append(self.raceParse(lineTokens, Types.RACE))
 				case Types.RITUAL:
-					list[file.type.value].append(self.ritualParse(lineTokens, Types.RITUAL))
+					list[file.type.title].append(self.ritualParse(lineTokens, Types.RITUAL))
 				case Types.SKILL:
-					list[file.type.value].append(self.skillParse(lineTokens, Types.SKILL))
+					list[file.type.title].append(self.skillParse(lineTokens, Types.SKILL))
 				case Types.TERRAIN:
-					list[file.type.value].append(self.terrainParse(lineTokens, Types.TERRAIN))
+					list[file.type.title].append(self.terrainParse(lineTokens, Types.TERRAIN))
 				case Types.THEME:
-					list[file.type.value].append(self.themeParse(lineTokens, Types.THEME))
+					list[file.type.title].append(self.themeParse(lineTokens, Types.THEME))
 				case Types.TRAP:
-					list[file.type.value].append(self.trapParse(lineTokens, Types.TRAP))
+					list[file.type.title].append(self.trapParse(lineTokens, Types.TRAP))
 		sQueue.put(list)
 
 
@@ -77,7 +77,7 @@ class Parser:
 
 		file : Files
 		for file in self.files:
-			newDict = {file.type.value: []}
+			newDict = {file.type.title: []}
 			thread = Thread(target=self.fileParse, args=(file, newDict, sharedQueue))
 			threads.append(thread)
 

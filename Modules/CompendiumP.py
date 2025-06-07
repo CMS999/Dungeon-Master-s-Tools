@@ -1,8 +1,7 @@
 from Modules.Compendium.MainScreenView import mainScreen
 from Modules.Compendium.MainScreenView import mainScreen
 from Modules.Compendium.MainScreenView import mainScreen
-from Modules.Compendium.ddiTypes import Types
-from Modules.Compendium.ddiTypes import Categories
+from Modules.Compendium.ddiTypes.DDIDataStructures import Types, Categories
 
 import PluginInterface.PluginTypes as Ptypes
 
@@ -24,7 +23,7 @@ class Compendium(Ptypes.MainPlugin):
 		ddiFilter = QComboBox()
 		ddiFilter.currentIndexChanged.connect(lambda: self.itemChange(ddiFilter.itemData(ddiFilter.currentIndex(), Qt.ItemDataRole.UserRole)))
 		for category in Categories:
-			ddiFilter.addItem(category.value, category)
+			ddiFilter.addItem(category.title, category)
 		toolBar.addWidget(ddiFilter)
 
 		searchBox = QLineEdit()

@@ -10,4 +10,5 @@
 - [ ] Define directory scruture for ui files and their pythons counter-parts;
 - [ ] Expand plugin interfaces for different use cases;
 - [ ] Do performance analising;
-- [ ] Refactor Enum logic;
+- [x] Refactor Enum logic;
+- [ ] Refactor Compendium small Modules in bigger Modules

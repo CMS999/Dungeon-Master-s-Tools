@@ -1,15 +1,13 @@
 from .ScreenView import Ui_ScreenView
 from .ddiTypes.Parser import Parser
-from .ddiTypes.ddiObjects import ddiObject
 from .database.database import pickleJar
-from .ddiTypes import Types
-from .ddiTypes import Categories
-from .ddiTypes.ddiObjects import *
+from .ddiTypes.DDIDataStructures import *
+
+from .ddiTypes.Images import Base64Images
+
 import os
 import tempfile
 import webbrowser
-from .ddiTypes.Images import Base64Images
-import re
 
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractScrollArea, QApplication, QFrame,
@@ -59,6 +57,8 @@ class mainScreen(Ui_ScreenView):
 		super().__init__()
 		self.Jar = pickleJar("database.db")
 		self.newWindows : list[QWidget] = []
+		self.nera = Categories
+		self.nera.ALL
 
 
 	def setupUi(self, Screen):
@@ -214,44 +214,43 @@ class mainScreen(Ui_ScreenView):
 		return self.Jar.popFromJar().pop()
 
 	def createRow(self, ddiObject: ddiObject) -> None:
-		newRow = QStandardItem(ddiObject.getType().category.value)
+		newRow = QStandardItem(ddiObject.getType().category.title)
 		newRow.setBackground(QColor(ddiObject.getColor()))
 		newRow.setData(ddiObject.getHTML(), 32)
-		newRow.setData(ddiObject.getType().category.value, 33)
+		newRow.setData(ddiObject.getType().category.title, 33)
 		newRow.setData(False, 34)
 		self.model.appendRow(newRow)
 
 	def populateRow(self, index: int, ddiObject: ddiObject) -> None:
 		newItem = QStandardItem(ddiObject.getName())
 		self.model.setItem(index, self.columnsList.index("Column1"), newItem)
-
-		match ddiObject:
-			case Associate():
+		match ddiObject.getType():
+			case Types.ASSOCIATE:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getTypeA()))
-			case Background():
+			case Types.BACKGROUND:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getTypeB()))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getCampaign()))
 				self.model.setItem(index, self.columnsList.index("Column4"), QStandardItem(ddiObject.getPrerequisite()))
 				self.model.setItem(index, self.columnsList.index("Column5"), QStandardItem(ddiObject.getSkills()))
-			case Classe():
+			case Types.CLASS:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getRole()))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getPower()))
 				self.model.setItem(index, self.columnsList.index("Column4"), QStandardItem(ddiObject.getAbilities()))
-			case Companion():
+			case Types.COMPANION:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getTypeC()))
-			case Deity():
+			case Types.DEITY:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getAlignment()))
-			case Disease():
+			case Types.DISEASE:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(str(ddiObject.getLevel())))
-			case EpicDestiny():
+			case Types.EPICDESTINY:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getPrerequisite()))
-			case Feat():
+			case Types.FEAT:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getPrerequisite()))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getTier()))
-			case Glossary():
+			case Types.GLOSSARY:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getTypeG()))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getCategory()))
-			case Item():
+			case Types.ITEM:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getLevel()))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getCategory()))
 				if ddiObject.getIsMundane():
@@ -260,41 +259,40 @@ class mainScreen(Ui_ScreenView):
 					self.model.setItem(index, self.columnsList.index("Column4"), QStandardItem("No"))
 				self.model.setItem(index, self.columnsList.index("Column5"), QStandardItem(ddiObject.getCost()))
 				self.model.setItem(index, self.columnsList.index("Column6"), QStandardItem(ddiObject.getRarity()))
-			case Monster():
+			case Types.MONSTER:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(str(ddiObject.getLevel())))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getModifier()))
 				self.model.setItem(index, self.columnsList.index("Column4"), QStandardItem(ddiObject.getRole()))
 				self.model.setItem(index, self.columnsList.index("Column5"), QStandardItem(str(ddiObject.getXP())))
 				self.model.setItem(index, self.columnsList.index("Column6"), QStandardItem(ddiObject.getSize()))
 				self.model.setItem(index, self.columnsList.index("Column7"), QStandardItem(ddiObject.getKeywords()))
-			case ParagonPath():
+			case Types.PARAGONPATH:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getPrerequisite()))
-			case Poison():
+			case Types.POISON:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(str(ddiObject.getLevel())))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(str(ddiObject.getCost())+" gp"))
-			case Power():
+			case Types.POWER:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(str(ddiObject.getLevel())))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getAction()))
 				self.model.setItem(index, self.columnsList.index("Column4"), QStandardItem(ddiObject.getClass()))
 				self.model.setItem(index, self.columnsList.index("Column5"), QStandardItem(ddiObject.getKind()))
 				self.model.setItem(index, self.columnsList.index("Column6"), QStandardItem(ddiObject.getUsage()))
-			case Race():
+			case Types.RACE:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getSize()))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getDescription()))
-			case Ritual():
+			case Types.RITUAL:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(str(ddiObject.getLevel())))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getComponent()))
 				self.model.setItem(index, self.columnsList.index("Column4"), QStandardItem(str(ddiObject.getPrice())))
 				self.model.setItem(index, self.columnsList.index("Column5"), QStandardItem(ddiObject.getKeySkill()))
-			case Skill():
+			case Types.GLOSSARY:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getTypeS()))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getCategory()))
-			case Terrain():
+			case Types.TERRAIN:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getTypeT()))
-			case Theme():
-				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getPrerequisite()))
-				pass
-			case Trap():
+			case Types.THEME:
+				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getPrerequisite()))
+			case Types.TRAP:
 				self.model.setItem(index, self.columnsList.index("Column2"), QStandardItem(ddiObject.getTypeT()))
 				self.model.setItem(index, self.columnsList.index("Column3"), QStandardItem(ddiObject.getRole()))
 				if ddiObject.getLevel().isnumeric():
@@ -366,15 +364,11 @@ class mainScreen(Ui_ScreenView):
 			proxyFilter = PinableBookmarkbleFilterProxy()
 			proxyFilter.setSourceModel(self.model)
 			proxyFilter.setFilterRole(33)
-			proxyFilter.setFilterRegularExpression(category.value)
+			proxyFilter.setFilterRegularExpression(category.title)
 			proxyFilter.filterAcceptsRow
 			self.searchModel = proxyFilter
 			self.ddiTable.setModel(proxyFilter)
-
-		""" for headerItem in range(self.model.columnCount()):
-			self.ddiTable.hideColumn(headerItem)
-			if self.model.horizontalHeaderItem(headerItem).text() in category.metaData:
-				self.ddiTable.showColumn(headerItem) """
+			
 		for headerItem in range(self.model.columnCount()):
 			self.ddiTable.hideColumn(headerItem)
 		
@@ -386,7 +380,7 @@ class mainScreen(Ui_ScreenView):
 			self.model.horizontalHeaderItem(1).setText("Name")
 			self.model.horizontalHeaderItem(8).setText("Source")
 		else:
-			for headerItem, columnName in enumerate(category.metaData):
+			for headerItem, columnName in enumerate(category.fields):
 				self.ddiTable.showColumn(headerItem)
 				self.model.horizontalHeaderItem(headerItem).setText(columnName)
 
