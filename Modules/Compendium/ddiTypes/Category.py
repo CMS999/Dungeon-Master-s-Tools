@@ -1,11 +1,11 @@
 from enum import Enum
 
 class Categories(Enum):
-	ALL = ("All", ["", "Name", "Level", "Cost", "Source"])
+	ALL = ("All", ["", "Name", "Source"])
 	BACKGROUND = ("Background", ["", "Name", "Type", "Campaing Setting", "Prerequisite(s)", "Associated Skills"])
 	CHARACTERSTHEME = ("Characters Theme", ["", "Name", "Prerequisite(s)"])
 	CLASSES = ("Classes", ["", "Name", "Role", "Power Source", "Key Abilities"])
-	COMPANIONSFAMILIARS = ("Companions & Familiars", ["", "", "Name", "Type"])
+	COMPANIONSFAMILIARS = ("Companions & Familiars", ["", "Name", "Type"])
 	CREATURES = ("Creatures", ["", "Name", "Level", "Main Role", "Group Role", "XP", "Size", "Keywords"])
 	DEITIES = ("Deities", ["", "Name", "Alignment"])
 	DISEASES = ("Diseases", ["", "Name", "Level"])

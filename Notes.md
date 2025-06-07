@@ -1,4 +1,6 @@
 - [Architecture](#architecture)
+	- [Ideia 1](#ideia-1)
+	- [Ideia 2](#ideia-2)
 - [UI Files](#ui-files)
 - [Codes (Early-Implementations)](#codes-early-implementations)
 - [Quick References](#quick-references)
@@ -10,6 +12,7 @@
 	- [Estimated Saves](#estimated-saves)
 
 # Architecture
+## Ideia 1
 Save plugins as ext files (zip files), load then and execute their plugin interface.
 ```Mermaid
 graph BT
@@ -25,6 +28,7 @@ graph BT
 	ExtN --> main
 	end
 ```
+## Ideia 2
 
 # UI Files
 You need to run the following command to generate the ui.py file
