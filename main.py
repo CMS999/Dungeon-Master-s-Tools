@@ -3,6 +3,7 @@ import os
 from MainWindow import *
 from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget, QMainWindow, QApplication, QGridLayout
 from PySide6.QtWidgets import QComboBox, QToolBar
+from PySide6.QtCore import Qt
 
 from PluginInterface.PluginTypes import MainPlugin
 from yapsy.PluginManager import PluginManager
@@ -56,6 +57,7 @@ class MainWindow(QMainWindow):
         self.toolList[self.ui.Tabs.currentIndex()].show()
 
 if __name__ == "__main__":
+    QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
     app = QApplication([])
     window = MainWindow()
     window.show()

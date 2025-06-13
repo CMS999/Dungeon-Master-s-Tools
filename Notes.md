@@ -62,6 +62,40 @@ def renderPower(self):
 ```
 
 # Quick References
+```python
+self.columnsList = [
+	"",
+	"Name",
+	"Type",
+	"Campaing Setting",
+	"Prerequisite(s)",
+	"Associated Skills",
+	"Role",
+	"Power Source",
+	"Key Abilities",
+	"Level",
+	"Main Role",
+	"Group Role",
+	"XP",
+	"Size",
+	"Keywords",
+	"Alignment",
+	"Tier",
+	"Category",
+	"Mundane",
+	"Cost",
+	"Rarity",
+	"Action",
+	"Class",
+	"Kind",
+	"Usage",
+	"Ability Scores",
+	"Component Cost",
+	"Market Price",
+	"Key Skill",
+	"Source"
+] 
+```
 ```cpp
 //Roles of DataRoleEnum, used for quick refenrence
 	enum ItemDataRole {

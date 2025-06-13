@@ -1,11 +1,12 @@
 from yapsy.IPlugin import IPlugin
-from PySide6.QtWidgets import QToolBar, QWidget
 from abc import ABC, abstractmethod
 
+from PySide6.QtWidgets import QToolBar, QWidget
+
 class MainPlugin(IPlugin, ABC):
-	def __init__(self, name: str='GenericPlugin'):
+	def __init__(self, name:str='ScreenPlugin'):
 		super().__init__()
-		self.name = name
+		self.name : str = name
 
 	def getPluginName(self) -> str:
 		return self.name
