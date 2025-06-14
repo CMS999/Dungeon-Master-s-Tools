@@ -1,5 +1,5 @@
-from ScreenView import Ui_ScreenView
-from DDIDataStructures import *
+from .ScreenView import Ui_ScreenView
+from .DDIDataStructures import *
 
 from abc import ABC, abstractmethod
 from threading import Thread
@@ -15,7 +15,7 @@ import typing
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractScrollArea, QApplication, QFrame,
 	QGridLayout, QHBoxLayout, QHeaderView, QSizePolicy,
-	QTableWidget, QTableWidgetItem, QWidget, QItemDelegate, QMenu)
+	QTableWidget, QTableWidgetItem, QWidget, QItemDelegate, QMenu, QComboBox, QToolBar, QLineEdit)
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
 	QMetaObject, QObject, QPoint, QRect,
 	QSize, QTime, QUrl, Qt, QSortFilterProxyModel, QModelIndex, QItemSelectionModel, Qt, QByteArray)
@@ -91,45 +91,45 @@ class DDIParser:
 			lineTokens = lineOfFile.split("','")
 			match file.type:
 				case Types.ASSOCIATE:
-					sDict[file.type.title].append(self.associateParse(lineTokens, Types.ASSOCIATE))
+					sDict[file.type.title].append(self.parseAssociate(lineTokens, Types.ASSOCIATE))
 				case Types.BACKGROUND:
-					sDict[file.type.title].append(self.backgroundParse(lineTokens, Types.BACKGROUND))
+					sDict[file.type.title].append(self.parseBackground(lineTokens, Types.BACKGROUND))
 				case Types.CLASS:
-					sDict[file.type.title].append(self.classParse(lineTokens, Types.CLASS))
+					sDict[file.type.title].append(self.parseClass(lineTokens, Types.CLASS))
 				case Types.COMPANION:
-					sDict[file.type.title].append(self.companionParse(lineTokens, Types.COMPANION))
+					sDict[file.type.title].append(self.parseCompanion(lineTokens, Types.COMPANION))
 				case Types.DEITY:
-					sDict[file.type.title].append(self.deityParse(lineTokens, Types.DEITY))
+					sDict[file.type.title].append(self.parseDeity(lineTokens, Types.DEITY))
 				case Types.DISEASE:
-					sDict[file.type.title].append(self.diseaseParse(lineTokens, Types.DISEASE))
+					sDict[file.type.title].append(self.parseDisease(lineTokens, Types.DISEASE))
 				case Types.EPICDESTINY:
-					sDict[file.type.title].append(self.epicdestinyParse(lineTokens, Types.EPICDESTINY))
+					sDict[file.type.title].append(self.parseEpicdestiny(lineTokens, Types.EPICDESTINY))
 				case Types.FEAT:
-					sDict[file.type.title].append(self.featParse(lineTokens, Types.FEAT))
+					sDict[file.type.title].append(self.parseFeat(lineTokens, Types.FEAT))
 				case Types.GLOSSARY:
-					sDict[file.type.title].append(self.glossaryParse(lineTokens, Types.GLOSSARY))
+					sDict[file.type.title].append(self.parseGlossary(lineTokens, Types.GLOSSARY))
 				case Types.ITEM:
-					sDict[file.type.title].append(self.itemParse(lineTokens, Types.ITEM))
+					sDict[file.type.title].append(self.parseItem(lineTokens, Types.ITEM))
 				case Types.MONSTER:
-					sDict[file.type.title].append(self.monsterParse(lineTokens, Types.MONSTER))
+					sDict[file.type.title].append(self.parseMonster(lineTokens, Types.MONSTER))
 				case Types.PARAGONPATH:
-					sDict[file.type.title].append(self.paragonpathParse(lineTokens, Types.PARAGONPATH))
+					sDict[file.type.title].append(self.parseParagonpath(lineTokens, Types.PARAGONPATH))
 				case Types.POISON:
-					sDict[file.type.title].append(self.poisonParse(lineTokens, Types.POISON))
+					sDict[file.type.title].append(self.parsePoison(lineTokens, Types.POISON))
 				case Types.POWER:
-					sDict[file.type.title].append(self.powerParse(lineTokens, Types.POWER))
+					sDict[file.type.title].append(self.parsePower(lineTokens, Types.POWER))
 				case Types.RACE:
-					sDict[file.type.title].append(self.raceParse(lineTokens, Types.RACE))
+					sDict[file.type.title].append(self.parseRace(lineTokens, Types.RACE))
 				case Types.RITUAL:
-					sDict[file.type.title].append(self.ritualParse(lineTokens, Types.RITUAL))
+					sDict[file.type.title].append(self.parseRitual(lineTokens, Types.RITUAL))
 				case Types.SKILL:
-					sDict[file.type.title].append(self.skillParse(lineTokens, Types.SKILL))
+					sDict[file.type.title].append(self.parseSkill(lineTokens, Types.SKILL))
 				case Types.TERRAIN:
-					sDict[file.type.title].append(self.terrainParse(lineTokens, Types.TERRAIN))
+					sDict[file.type.title].append(self.parseTerrain(lineTokens, Types.TERRAIN))
 				case Types.THEME:
-					sDict[file.type.title].append(self.themeParse(lineTokens, Types.THEME))
+					sDict[file.type.title].append(self.parseTheme(lineTokens, Types.THEME))
 				case Types.TRAP:
-					sDict[file.type.title].append(self.trapParse(lineTokens, Types.TRAP))
+					sDict[file.type.title].append(self.parseTrap(lineTokens, Types.TRAP))
 		sQueue.put(sDict)
 
 	def buildDDIObjects(self) -> dict[str:list]:
@@ -681,7 +681,7 @@ class HTMLRenderer(QWebEngineView):
 class CompendiumScreen(Ui_ScreenView):
 	def __init__(self):
 		super().__init__()
-		self.database = Serializer("database.db")
+		self.database = Serializer(SerializerName="database.db")
 		self.DDIData : dict
 		try:
 			self.DDIData = self.loadData()
@@ -736,6 +736,20 @@ class CompendiumScreen(Ui_ScreenView):
 		self.ddiTable.sortByColumn(1, Qt.SortOrder.AscendingOrder)
 		self.ddiTable.verticalHeader().hide()
 		self.ddiTable.customContextMenuRequested.connect(self.on_context_menu)
+
+	def createFilterBox(self) -> QComboBox:
+		newComboBox = QComboBox()
+		newComboBox.currentIndexChanged.connect(lambda: self.changeTable(newComboBox.itemData(newComboBox.currentIndex(), Qt.ItemDataRole.UserRole)))
+		for category in Categories:
+			newComboBox.addItem(category.title, category)
+		return newComboBox
+
+	def createFilterLine(self) -> QLineEdit:
+		newLineEdit = QLineEdit()
+		newLineEdit.setMinimumSize(150,15)
+		newLineEdit.setMaximumSize(150,35)
+		newLineEdit.textEdited.connect(lambda: self.textChanged(newLineEdit.text()))
+		return newLineEdit
 
 	def getRowData(self, row:int) -> ddiObject:
 		if row >= 0 and row <= self.ddiTable.model().rowCount():
@@ -805,8 +819,6 @@ class CompendiumScreen(Ui_ScreenView):
 	def on_context_menu(self, position: QPoint):
 		index = self.ddiTable.indexAt(position)
 		if index.isValid():
-			for column in range(self.ddiTable.model().columnCount()):
-				print(self.ddiTable.model().itemData(self.ddiTable.model().index(index.row(), column)))
 			itemData = self.ddiTable.model().itemData(self.ddiTable.model().index(index.row(), 0))
 			cMenu = self.createContextMenu(itemData, self.ddiTable.model().index(index.row(), 0))
 			cMenu.exec_(self.ddiTable.viewport().mapToGlobal(position))

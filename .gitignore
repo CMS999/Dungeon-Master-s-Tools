@@ -3,6 +3,7 @@
 /pickles
 /build
 /dist
+/data
 /__pycache__
 **/*/__pycache__
 *.ui
