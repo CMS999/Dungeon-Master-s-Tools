@@ -1,5 +1,4 @@
 from ScreenView import Ui_ScreenView
-from database import pickleJar
 from DDIDataStructures import *
 
 from abc import ABC, abstractmethod
@@ -7,10 +6,11 @@ from threading import Thread
 from queue import Queue
 from enum import IntEnum
 
-
 import os
 import tempfile
 import webbrowser
+import pickle
+import typing
 
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractScrollArea, QApplication, QFrame,
@@ -24,14 +24,57 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 	QImage, QKeySequence, QLinearGradient, QPainter,
 	QPalette, QPixmap, QRadialGradient, QTransform, QStandardItemModel, QStandardItem, QCloseEvent, QAction)
 
+__all__ = ["DDIParser", "DDITableItemRole", "PinableBookmarkbleFilterProxy", "Base64Icons", "HTMLRenderer", "CompendiumScreen"]
 
-class Parser:
+class Serializer:
+	def __init__(self, path:str='data/', SerializerName:str='Serializer'):
+		self.filename = path+SerializerName
+		if not os.path.isdir(path):
+			os.makedirs(path)
+
+	def write(self, object: typing.Any) -> None:
+		with open(self.filename, 'wb') as serializer:
+			pickle.dump(object, serializer, protocol=pickle.HIGHEST_PROTOCOL)
+			serializer.close()
+
+	def load(self) -> typing.Any:
+		data : typing.Any = None
+		with open(self.filename, 'rb') as serializer:
+			try:
+				data = pickle.load(serializer)
+			except:
+				raise ("No serialized file found")
+			serializer.close()
+		return data
+
+class DDIParser:
 	def __init__(self):
 		self.sqlPath = "sql/"
-		self.files = Files
 		self.stripHTML = ["\\r", "\\n", "\\"]
+		self.sqlDDITypes : dict[str:list] = {
+			"Associate": [],
+			"Background": [],
+			"Class": [],
+			"Companion": [],
+			"Deity": [],
+			"Disease": [],
+			"Epic Destiny": [],
+			"Feat": [],
+			"Glossary": [],
+			"Item": [],
+			"Monster": [],
+			"Paragon Path": [],
+			"Poison": [],
+			"Power": [],
+			"Race": [],
+			"Ritual": [],
+			"Skill": [],
+			"Terrain": [],
+			"Theme": [],
+			"Trap": []
+		}
 
-	def fileParse(self, file: Files, sDict: dict, sQueue: Queue):
+	def parseFile(self, file: Files, sDict: dict, sQueue: Queue):
 		linesInFile : list[str] = []
 		try:
 			with open(self.sqlPath + file.file, 'r') as ddiFile:
@@ -89,15 +132,15 @@ class Parser:
 					sDict[file.type.title].append(self.trapParse(lineTokens, Types.TRAP))
 		sQueue.put(sDict)
 
-	def buildDDIObjects(self, ddiDict: dict[str:list]):
+	def buildDDIObjects(self) -> dict[str:list]:
 		sQueue = Queue()
 		threads : list[Thread] = []
 
-		for file in self.files:
+		for file in Files:
 			newDict = {file.type.title: []}
-			thread = Thread(target=self.fileParse, args=(file, newDict, sQueue))
+			thread = Thread(target=self.parseFile, args=(file, newDict, sQueue))
 			threads.append(thread)
-		
+
 		for thread in threads:
 			thread.start()
 
@@ -107,7 +150,9 @@ class Parser:
 		while not sQueue.empty():
 			sDict : dict = sQueue.get()
 			for ddiType in sDict:
-				ddiDict[ddiType] = sDict[ddiType]
+				self.sqlDDITypes[ddiType] = sDict[ddiType]
+
+		return self.sqlDDITypes
 
 	def processHTML(self, html: str) -> str:
 		for regex in self.stripHTML:
@@ -147,8 +192,9 @@ class Parser:
 			preEnd = html.find("<", preStart+4)
 			if(preEnd != -1):
 				return html[preStart+4:preEnd]
+		return html
 
-	def associateParse(self, tokens: list, type: Types):
+	def parseAssociate(self, tokens: list[str], type: Types):
 		a = Associate()
 		a.setColor("#4e5c2e")
 		a.setID(tokens[0])
@@ -160,7 +206,7 @@ class Parser:
 		a.setType(type)
 		return a
 
-	def backgroundParse(self, tokens: list, type: Types):
+	def parseBackground(self, tokens: list[str], type: Types):
 		b = Background()
 		b.setColor('#1d3d5e')
 		b.setID(tokens[0])
@@ -175,7 +221,7 @@ class Parser:
 		b.setType(type)
 		return b
 
-	def classParse(self, tokens:list[str], type:Types):
+	def parseClass(self, tokens:list[str], type:Types):
 		c = Classe()
 		c.setColor("#1d3d5e")
 		c.setID(tokens[0])
@@ -191,7 +237,7 @@ class Parser:
 		c.setType(type)
 		return c
 
-	def companionParse(self, tokens:list[str], type:Types):
+	def parseCompanion(self, tokens:list[str], type:Types):
 		c = Companion()
 		c.setColor("#1d3d5e")
 		c.setID(tokens[0])
@@ -203,7 +249,7 @@ class Parser:
 		c.setType(type)
 		return c
 
-	def deityParse(self, tokens:list[str], type:Types):
+	def parseDeity(self, tokens:list[str], type:Types):
 		d = Deity()
 		d.setColor("#1d3d5e")
 		d.setID(tokens[0])
@@ -215,7 +261,7 @@ class Parser:
 		d.setType(type)
 		return d
 
-	def diseaseParse(self, tokens:list[str], type:Types):
+	def parseDisease(self, tokens:list[str], type:Types):
 		d = Disease()
 		d.setColor("#619869")
 		d.setID(tokens[0])
@@ -227,7 +273,7 @@ class Parser:
 		d.setType(type)
 		return d
 
-	def epicdestinyParse(self, tokens:list[str], type:Types):
+	def parseEpicdestiny(self, tokens:list[str], type:Types):
 		ed = EpicDestiny()
 		ed.setColor("#1d3d5e")
 		ed.setID(tokens[0])
@@ -241,7 +287,7 @@ class Parser:
 		ed.setType(type)
 		return ed
 
-	def featParse(self, tokens:list[str], type:Types):
+	def parseFeat(self, tokens:list[str], type:Types):
 		f = Feat()
 		f.setColor("#1d3d5e")
 		f.setID(tokens[0])
@@ -257,7 +303,7 @@ class Parser:
 		f.setType(type)
 		return f
 
-	def glossaryParse(self, tokens:list[str], type:Types):
+	def parseGlossary(self, tokens:list[str], type:Types):
 		g = Glossary()
 		g.setColor("#1d3d5e")
 		g.setID(tokens[0])
@@ -270,7 +316,7 @@ class Parser:
 		g.setType(type)
 		return g
 
-	def itemParse(self, tokens:list[str], type:Types):
+	def parseItem(self, tokens:list[str], type:Types):
 		i = Item()
 		i.setID(tokens[0])
 		i.setName(self.processString(tokens[1]))
@@ -296,7 +342,7 @@ class Parser:
 			i.setColor("#EFD09F")
 		return i
 
-	def monsterParse(self, tokens:list[str], type:Types):
+	def parseMonster(self, tokens:list[str], type:Types):
 		m = Monster()
 		m.setColor("#4e5c2e")
 		m.setID(tokens[0])
@@ -315,7 +361,7 @@ class Parser:
 		m.setType(type)
 		return m
 
-	def paragonpathParse(self, tokens:list[str], type:Types):
+	def parseParagonpath(self, tokens:list[str], type:Types):
 		p = ParagonPath()
 		p.setColor("#1d3d5e")
 		p.setID(tokens[0])
@@ -327,7 +373,7 @@ class Parser:
 		p.setType(type)
 		return p
 
-	def poisonParse(self, tokens:list[str], type:Types):
+	def parsePoison(self, tokens:list[str], type:Types):
 		p = Poison()
 		p.setColor("#000")
 		p.setID(tokens[0])
@@ -340,7 +386,7 @@ class Parser:
 		p.setType(type)
 		return p
 
-	def powerParse(self, tokens:list[str], type: Types):
+	def parsePower(self, tokens:list[str], type: Types):
 		p = Power()
 		if('Daily' in tokens[11]):
 			p.setColor('#4d4d4f')
@@ -363,7 +409,7 @@ class Parser:
 		p.setType(type)
 		return p
 
-	def raceParse(self, tokens:list[str], type: Types):
+	def parseRace(self, tokens:list[str], type: Types):
 		r = Race()
 		r.setColor('#1d3d5e')
 		r.setID(tokens[0])
@@ -378,7 +424,7 @@ class Parser:
 		r.setType(type)
 		return r
 
-	def ritualParse(self, tokens:list[str], type: Types):
+	def parseRitual(self, tokens:list[str], type: Types):
 		r = Ritual()
 		r.setColor('#1d3d5e')
 		r.setID(tokens[0])
@@ -393,7 +439,7 @@ class Parser:
 		r.setType(type)
 		return r
 
-	def skillParse(self, tokens:list[str], type: Types):
+	def parseSkill(self, tokens:list[str], type: Types):
 		s = Skill()
 		s.setColor('#1d3d5e')
 		s.setID(tokens[0])
@@ -406,7 +452,7 @@ class Parser:
 		s.setType(type)
 		return s
 
-	def terrainParse(self, tokens:list[str], type: Types):
+	def parseTerrain(self, tokens:list[str], type: Types):
 		t = Terrain()
 		t.setColor('#5c1f34')
 		t.setID(tokens[0])
@@ -418,7 +464,7 @@ class Parser:
 		t.setType(type)
 		return t
 
-	def themeParse(self, tokens:list[str], type: Types):
+	def parseTheme(self, tokens:list[str], type: Types):
 		t = Theme()
 		t.setColor('#1d3d5e')
 		t.setID(tokens[0])
@@ -429,7 +475,7 @@ class Parser:
 		t.setType(type)
 		return t
 
-	def trapParse(self, tokens:list[str], type: Types):
+	def parseTrap(self, tokens:list[str], type: Types):
 		t = Trap()
 		t.setColor('#5c1f34')
 		t.setID(tokens[0])
@@ -473,7 +519,7 @@ class HTMLRenderer(QWebEngineView):
 		self.setObjectName("HTMLRender")
 		self.setMinimumSize(625, 0)
 		self.head = self.__buildHTMLHead()
-		
+
 	def __buildHTMLHead(self) -> str:
 		headText : str = ''
 		headText += '<!DOCTYPE HTML>'
@@ -632,12 +678,24 @@ class HTMLRenderer(QWebEngineView):
 	def renderHTML(self, html: str) -> None:
 		self.setHtml(self.formatHTML(html))
 
-class mainScreen(Ui_ScreenView):
+class CompendiumScreen(Ui_ScreenView):
 	def __init__(self):
 		super().__init__()
-		self.Jar = pickleJar("database.db")
+		self.database = Serializer("database.db")
+		self.DDIData : dict
+		try:
+			self.DDIData = self.loadData()
+		except:
+			self.DDIData = DDIParser().buildDDIObjects()
+			self.saveData(self.DDIData)
 		self.newWindows : list[QWidget] = []
 
+	def saveData(self, data: dict) -> None:
+		self.database.write(data)
+
+	def loadData(self) -> dict:
+		return self.database.load()
+	
 	def setupUi(self, Screen) -> None:
 		super().setupUi(Screen)
 		self.webViewer = HTMLRenderer()
@@ -753,12 +811,6 @@ class mainScreen(Ui_ScreenView):
 			cMenu = self.createContextMenu(itemData, self.ddiTable.model().index(index.row(), 0))
 			cMenu.exec_(self.ddiTable.viewport().mapToGlobal(position))
 
-	def saveData(self, data: dict) -> None:
-		self.Jar.putInJar(data)
-
-	def loadData(self) -> dict:
-		return self.Jar.popFromJar().pop()
-
 	def createRow(self, ddiObject: ddiObject) -> None:
 		newRow = QStandardItem(ddiObject.getType().category.title)
 		newRow.setBackground(QColor(ddiObject.getColor()))
@@ -853,42 +905,14 @@ class mainScreen(Ui_ScreenView):
 					self.model.setItem(row, 5, QStandardItem("*"))
 				self.model.setItem(row, 6, QStandardItem(ddiObject.getClasse()))
 
-		self.model.setItem(row, self.columnsList.index("Column8"), QStandardItem(ddiObject.getSource()))
+		self.model.setItem(row, 8, QStandardItem(ddiObject.getSource()))
 
 	def populateModel(self) -> None:
-		data = {
-			"Associate": [],
-			"Background": [],
-			"Class": [],
-			"Companion": [],
-			"Deity": [],
-			"Disease": [],
-			"Epic Destiny": [],
-			"Feat": [],
-			"Glossary": [],
-			"Item": [],
-			"Monster": [],
-			"Paragon Path": [],
-			"Poison": [],
-			"Power": [],
-			"Race": [],
-			"Ritual": [],
-			"Skill": [],
-			"Terrain": [],
-			"Theme": [],
-			"Trap": []
-		}
-		if not os.path.isfile("pickles/database.db"):
-			Parser().buildDDIObjects(data)
-			self.saveData(data)
-		data = self.loadData()
-		index = 0
-		for type in data:
-			ddiEntry : ddiObject
-			for ddiEntry in data[type]:
+		ddiEntry : ddiObject
+		for type in Types:
+			for ddiEntry in self.DDIData[type.title]:
 				self.createRow(ddiEntry)
-				self.populateRow(index, ddiEntry)
-				index += 1
+				self.populateRow(self.model.rowCount()-1, ddiEntry)
 
 	def textChanged(self, text: str) -> None:
 		proxyFilter = PinableBookmarkbleFilterProxy()
@@ -908,9 +932,8 @@ class mainScreen(Ui_ScreenView):
 		else:
 			proxyFilter = PinableBookmarkbleFilterProxy()
 			proxyFilter.setSourceModel(self.model)
-			proxyFilter.setFilterRole(33)
+			proxyFilter.setFilterRole(DDITableItemRole.Category)
 			proxyFilter.setFilterRegularExpression(category.title)
-			proxyFilter.filterAcceptsRow
 			self.searchModel = proxyFilter
 			self.ddiTable.setModel(proxyFilter)
 
