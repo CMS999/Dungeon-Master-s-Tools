@@ -12,3 +12,5 @@
 - [ ] Do performance analising;
 - [x] Refactor Enum logic;
 - [x] Refactor Compendium small Modules in bigger Modules
+- [ ] Implement options menu for each tab
+- [ ] Make new source filter for Compendium (filter pre-MM3 and by source)

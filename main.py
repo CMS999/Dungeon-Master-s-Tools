@@ -1,41 +1,44 @@
-import sys
-import os
 from MainWindow import *
-from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget, QMainWindow, QApplication, QGridLayout, QLineEdit
-from PySide6.QtWidgets import QComboBox, QToolBar
+from PySide6.QtWidgets import QApplication, QWidget, QMainWindow, QApplication, QToolBar
 from PySide6.QtCore import Qt
+
+import os
+import sys
 
 from yapsy.PluginManager import PluginManager
 
 from libs.PluginTypes import MainPlugin
 from libs.DMTCore import CompendiumScreen
-from libs.DDIDataStructures import Categories
 
 class MainWindow(QMainWindow):
-	def closeEvent(self, event):
-		QApplication.closeAllWindows()
-		event.accept()
 
 	def __init__(self):
 		super(MainWindow, self).__init__()
 		self.toolList : list[QToolBar] = []
 		self.ui = Ui_MainWindow()
 		self.ui.setupUi(self)
-		
-		self.Cscreen = CompendiumScreen()
-		self.Cscreen.setupUi(self.createTab('Compendium'))
+
+		self.Compendium = CompendiumScreen()
+		self.Compendium.setupUi(self.createTab('Compendium'))
 		self.ui.Tabs.currentChanged.connect(self.currentToolBar)
 		self.createToolBar('Compendium')
-		self.toolList[0].addWidget(self.Cscreen.createFilterBox())
-		self.toolList[0].addWidget(self.Cscreen.createFilterLine())
-		
+		if len(self.toolList) > 0:
+			self.toolList[0].addWidget(self.Compendium.createFilterBox())
+			self.toolList[0].addWidget(self.Compendium.createFilterLine())
+
+		if not os.path.isdir('Modules'):
+			os.makedirs("Modules")
 		self.PluginManager = PluginManager()
-		#self.loadPlugins()
-		#self.createTabs()
-		#self.addToolBars()
+		self.loadPlugins()
+		self.addPluginsTabs()
+		self.addPluginsToolBars()
 
 		if len(self.toolList) > 0:
 			self.toolList[0].show()
+
+	def closeEvent(self, event):
+		QApplication.closeAllWindows()
+		event.accept()
 
 	def createTab(self, tabName:str='NewTab') -> QWidget:
 		newTab = QWidget()
