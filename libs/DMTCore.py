@@ -169,14 +169,24 @@ class DDIParser:
 		return string
 
 	def retrivePrerequisite(self, html: str) -> str:
-		preStart = html.find("<b>Prerequisite</b>: ")
-		if(preStart == -1):
-			preStart = html.find("<b>Prerequisite: </b>")
+		preStart = html.find("<b>Prerequisite: </b>")
+		preEnd1 = -1
+		preEnd2 = -1
+		if preStart != -1:
+			preEnd1 = html.find("</p>", preStart)
 
-		if(preStart != -1):
-			preEnd = html.find("<br/>", preStart)
-			if(preEnd != -1):
-				return html[preStart+21:preEnd]
+		if preStart != -1:
+			preEnd2 = html.find("<br/>", preStart)
+
+		preEnd = -1
+
+		if preEnd2 != -1 and preEnd2 < preEnd1:
+			preEnd = preEnd2
+		elif preEnd1 != -1 and preEnd1 < preEnd2:
+			preEnd = preEnd1
+
+		if preEnd != -1:
+			return html[preStart+21:preEnd]
 
 	def retriveSize(self, html: str) -> str:
 		preStart = html.find('<span class=\\"type\\">')
@@ -695,7 +705,7 @@ class CompendiumScreen(Ui_ScreenView):
 
 	def loadData(self) -> dict:
 		return self.database.load()
-	
+
 	def setupUi(self, Screen) -> None:
 		super().setupUi(Screen)
 		self.webViewer = HTMLRenderer()
@@ -720,9 +730,10 @@ class CompendiumScreen(Ui_ScreenView):
 
 	def setupDDITable(self) -> None:
 		self.ddiTable.setModel(self.model)
-		self.ddiTable.horizontalHeader().setSortIndicatorClearable(True)
-		self.ddiTable.horizontalHeader().setSortIndicatorShown(True)
-		self.ddiTable.horizontalHeader().resizeSections(QHeaderView.ResizeMode.ResizeToContents)
+		self.ddiTable.horizontalHeader().resizeSections(QHeaderView.ResizeMode.Stretch)
+		#self.ddiTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+		#self.ddiTable.horizontalHeader().setCascadingSectionResizes(True)
+		#self.ddiTable.horizontalHeader().setStretchLastSection(True)
 
 		self.ddiTable.verticalHeader().setDefaultSectionSize(5)
 		self.ddiTable.verticalHeader().resizeSections(QHeaderView.ResizeMode.Fixed)
@@ -732,8 +743,9 @@ class CompendiumScreen(Ui_ScreenView):
 		self.ddiTable.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 		self.ddiTable.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
 		self.ddiTable.horizontalHeader().setSortIndicatorClearable(True)
+		self.ddiTable.horizontalHeader().setSortIndicatorShown(True)
 		self.ddiTable.setSortingEnabled(True)
-		self.ddiTable.sortByColumn(1, Qt.SortOrder.AscendingOrder)
+		self.ddiTable.sortByColumn(-1, Qt.SortOrder.AscendingOrder)
 		self.ddiTable.verticalHeader().hide()
 		self.ddiTable.customContextMenuRequested.connect(self.on_context_menu)
 
@@ -852,49 +864,68 @@ class CompendiumScreen(Ui_ScreenView):
 			case Types.DEITY:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getAlignment()))
 			case Types.DISEASE:
-				self.model.setItem(row, 2, QStandardItem(str(ddiObject.getLevel())))
+				newItem2 = QStandardItem()
+				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+				self.model.setItem(row, 2, newItem2)
 			case Types.EPICDESTINY:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getPrerequisite()))
 			case Types.FEAT:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getPrerequisite()))
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getTier()))
+				self.model.setItem(row, 2, QStandardItem(ddiObject.getTier()))
+				self.model.setItem(row, 3, QStandardItem(ddiObject.getPrerequisite()))
 			case Types.GLOSSARY:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeG()))
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getCategory()))
 			case Types.ITEM:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getLevel()))
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getCategory()))
+				newItem2 = QStandardItem()
+				self.model.setItem(row, 2, QStandardItem(ddiObject.getCategory()))
 				if ddiObject.getIsMundane():
-					self.model.setItem(row, 4, QStandardItem("Yes"))
+					self.model.setItem(row, 3, QStandardItem("Yes"))
 				else:
-					self.model.setItem(row, 4, QStandardItem("No"))
+					self.model.setItem(row, 3, QStandardItem("No"))
+				if ddiObject.getLevel().isnumeric():
+					newItem2.setData(int(ddiObject.getLevel()), Qt.ItemDataRole.DisplayRole)
+				else:
+					newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+				self.model.setItem(row, 4, newItem2)
 				self.model.setItem(row, 5, QStandardItem(ddiObject.getCost()))
 				self.model.setItem(row, 6, QStandardItem(ddiObject.getRarity()))
 			case Types.MONSTER:
-				self.model.setItem(row, 2, QStandardItem(str(ddiObject.getLevel())))
+				newItem2 = QStandardItem()
+				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+				self.model.setItem(row, 2, newItem2)
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getModifier()))
 				self.model.setItem(row, 4, QStandardItem(ddiObject.getRole()))
-				self.model.setItem(row, 5, QStandardItem(str(ddiObject.getXP())))
+				newItem3 = QStandardItem()
+				newItem3.setData(ddiObject.getXP(), Qt.ItemDataRole.DisplayRole)
+				self.model.setItem(row, 5, newItem3)
 				self.model.setItem(row, 6, QStandardItem(ddiObject.getSize()))
 				self.model.setItem(row, 7, QStandardItem(ddiObject.getKeywords()))
 			case Types.PARAGONPATH:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getPrerequisite()))
 			case Types.POISON:
-				self.model.setItem(row, 2, QStandardItem(str(ddiObject.getLevel())))
+				newItem2 = QStandardItem()
+				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+				self.model.setItem(row, 2, newItem2)
 				self.model.setItem(row, 3, QStandardItem(str(ddiObject.getCost())+" gp"))
 			case Types.POWER:
-				self.model.setItem(row, 2, QStandardItem(str(ddiObject.getLevel())))
+				newItem2 = QStandardItem()
+				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+				self.model.setItem(row, 2, newItem2)
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getAction()))
 				self.model.setItem(row, 4, QStandardItem(ddiObject.getClass()))
 				self.model.setItem(row, 5, QStandardItem(ddiObject.getKind()))
 				self.model.setItem(row, 6, QStandardItem(ddiObject.getUsage()))
 			case Types.RACE:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getSize()))
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getDescription()))
+				self.model.setItem(row, 2, QStandardItem(ddiObject.getDescription()))
+				self.model.setItem(row, 3, QStandardItem(ddiObject.getSize()))
 			case Types.RITUAL:
-				self.model.setItem(row, 2, QStandardItem(str(ddiObject.getLevel())))
+				newItem2 = QStandardItem()
+				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+				self.model.setItem(row, 2, newItem2)
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getComponent()))
-				self.model.setItem(row, 4, QStandardItem(str(ddiObject.getPrice())))
+				newItem3 = QStandardItem()
+				newItem3.setData(ddiObject.getPrice(), Qt.ItemDataRole.DisplayRole)
+				self.model.setItem(row, 4, newItem3)
 				self.model.setItem(row, 5, QStandardItem(ddiObject.getKeySkill()))
 			case Types.GLOSSARY:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeS()))
@@ -907,12 +938,16 @@ class CompendiumScreen(Ui_ScreenView):
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeT()))
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getRole()))
 				if ddiObject.getLevel().isnumeric():
-					self.model.setItem(row, 4, QStandardItem(ddiObject.getLevel()))
+					newItem2 = QStandardItem()
+					newItem2.setData(int(ddiObject.getLevel()), Qt.ItemDataRole.DisplayRole)
+					self.model.setItem(row, 4, newItem2)
 				else:
 					self.model.setItem(row, 4, QStandardItem("*"))
 
 				if ddiObject.getXP() != -1:
-					self.model.setItem(row, 5, QStandardItem(str(ddiObject.getXP())))
+					newItem3 = QStandardItem()
+					newItem3.setData(ddiObject.getXP(), Qt.ItemDataRole.DisplayRole)
+					self.model.setItem(row, 5, newItem3)
 				else:
 					self.model.setItem(row, 5, QStandardItem("*"))
 				self.model.setItem(row, 6, QStandardItem(ddiObject.getClasse()))

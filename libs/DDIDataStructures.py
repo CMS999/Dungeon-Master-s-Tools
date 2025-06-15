@@ -393,7 +393,7 @@ class Item(ddiObject):
 	def __init__(self):
 		super().__init__()
 		self.Cost : str = None
-		self.Level : str= None
+		self.Level : str = None
 		self.Category : str = None
 		self.Enhancement : str = None
 		self.IsMundane : bool = None
