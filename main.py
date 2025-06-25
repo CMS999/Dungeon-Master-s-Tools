@@ -11,7 +11,6 @@ from libs.PluginTypes import MainPlugin
 from libs.DMTCore import CompendiumScreen
 
 class MainWindow(QMainWindow):
-
 	def __init__(self):
 		super(MainWindow, self).__init__()
 		self.toolList : list[QToolBar] = []
@@ -23,8 +22,12 @@ class MainWindow(QMainWindow):
 		self.ui.Tabs.currentChanged.connect(self.currentToolBar)
 		self.createToolBar('Compendium')
 		if len(self.toolList) > 0:
+			self.toolList[0].setStyleSheet(''' QToolBar::separator{width: 20px} ''')
 			self.toolList[0].addWidget(self.Compendium.createFilterBox())
+			self.toolList[0].addSeparator()
 			self.toolList[0].addWidget(self.Compendium.createFilterLine())
+			self.toolList[0].addSeparator()
+			self.toolList[0].addWidget(self.Compendium.createFilterOptions())
 
 		if not os.path.isdir('Modules'):
 			os.makedirs("Modules")
@@ -35,6 +38,11 @@ class MainWindow(QMainWindow):
 
 		if len(self.toolList) > 0:
 			self.toolList[0].show()
+
+	def addMenu(self, title:str='NewMenu'):
+		newMenu = QMenu(title)
+		self.ui.menubar.addMenu(newMenu)
+		return newMenu
 
 	def closeEvent(self, event):
 		QApplication.closeAllWindows()
