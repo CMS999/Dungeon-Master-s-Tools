@@ -1,5 +1,6 @@
 from .ScreenView import Ui_ScreenView
 from .DDIDataStructures import *
+from .FilterTest import Ui_FilterTab
 
 from abc import ABC, abstractmethod
 from threading import Thread
@@ -15,7 +16,7 @@ import typing
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractScrollArea, QApplication, QFrame,
 	QGridLayout, QHBoxLayout, QHeaderView, QSizePolicy,
-	QTableWidget, QTableWidgetItem, QWidget, QItemDelegate, QMenu, QComboBox, QToolBar, QLineEdit)
+	QTableWidget, QTableWidgetItem, QWidget, QItemDelegate, QMenu, QComboBox, QToolBar, QLineEdit, QPushButton, QTabWidget, QCheckBox)
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
 	QMetaObject, QObject, QPoint, QRect,
 	QSize, QTime, QUrl, Qt, QSortFilterProxyModel, QModelIndex, QItemSelectionModel, Qt, QByteArray)
@@ -709,7 +710,20 @@ class CompendiumScreen(Ui_ScreenView):
 	def setupUi(self, Screen) -> None:
 		super().setupUi(Screen)
 		self.webViewer = HTMLRenderer()
+		self.filterOptions = QTabWidget()
+		newTab = QWidget()
+		newTab.setObjectName('Sourcebook Filters')
+		self.filterOptions.addTab(newTab, 'Sourcebook Filters')
 		self.gL_2.addWidget(self.webViewer)
+		self.swap1 = self.webViewer
+		self.swap2 = self.filterOptions
+		self.filterOptions.setMinimumSize(625,0)
+		self.filterOptions.setMaximumWidth(625)
+		newTab = QWidget()
+		newTab.setObjectName('test')
+		self.filterOptions.addTab(newTab, 'test')
+		TestUI = Ui_FilterTab()
+		TestUI.setupUi(newTab)
 		self.model : QStandardItemModel = QStandardItemModel()
 		self.columnsList = [
 			"",
@@ -762,6 +776,19 @@ class CompendiumScreen(Ui_ScreenView):
 		newLineEdit.setMaximumSize(150,35)
 		newLineEdit.textEdited.connect(lambda: self.textChanged(newLineEdit.text()))
 		return newLineEdit
+
+	def createFilterOptions(self) -> QPushButton:
+		newButton = QPushButton('Filters')
+		newButton.clicked.connect(self.changeView)
+		return newButton
+	
+	def changeView(self):
+		self.gL_2.replaceWidget(self.swap1, self.swap2)
+		self.webViewer.setVisible(not self.webViewer.isVisible())
+		self.filterOptions.setVisible(not self.filterOptions.isVisible())
+		temp = self.swap2
+		self.swap2 = self.swap1
+		self.swap1 = temp
 
 	def getRowData(self, row:int) -> ddiObject:
 		if row >= 0 and row <= self.ddiTable.model().rowCount():
@@ -1000,3 +1027,4 @@ class CompendiumScreen(Ui_ScreenView):
 				self.model.horizontalHeaderItem(headerItem).setText(columnName)
 
 		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML()))
+		self.ddiTable.horizontalHeader().resizeSections(QHeaderView.ResizeMode.ResizeToContents)
