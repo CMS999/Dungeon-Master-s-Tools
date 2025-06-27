@@ -2,7 +2,6 @@ from .ScreenView import Ui_ScreenView
 from .DDIDataStructures import *
 from .FilterTest import Ui_FilterTab
 
-from abc import ABC, abstractmethod
 from threading import Thread
 from queue import Queue
 from enum import IntEnum
@@ -19,7 +18,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractScrollArea, QApplicat
 	QTableWidget, QTableWidgetItem, QWidget, QItemDelegate, QMenu, QComboBox, QToolBar, QLineEdit, QPushButton, QTabWidget, QCheckBox)
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
 	QMetaObject, QObject, QPoint, QRect,
-	QSize, QTime, QUrl, Qt, QSortFilterProxyModel, QModelIndex, QItemSelectionModel, Qt, QByteArray)
+	QSize, QTime, QUrl, Qt, QSortFilterProxyModel, QModelIndex, QItemSelectionModel, Qt, QByteArray, QRegularExpression)
 from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 	QFont, QFontDatabase, QGradient, QIcon,
 	QImage, QKeySequence, QLinearGradient, QPainter,
@@ -509,16 +508,134 @@ class DDITableItemRole(IntEnum):
 	Data = 32
 	Category = 33
 	Pinned = 34
+	test = 35
 
 class PinableBookmarkbleFilterProxy(QSortFilterProxyModel):
+	def __init__(self):
+		super().__init__()
+		self.Sources : dict[str:bool] = {
+			"Adventurer's Vault": True,
+			"Adventurer's Vault 2": True,
+			"Arcane Power": True,
+			"Beyond the Crystal Cave": True,
+			"City of Stormreach": True,
+			"Class Compendium": True,
+			"Council of Spiders": True,
+			"Dangerous Delves": True,
+			"Dark Sun Campaign Setting": True,
+			"Dark Sun Creature Catalog": True,
+			"Demonomicon": True,
+			"Divine Power": True,
+			"Draconomicon: Chromatic Dragons": True,
+			"Draconomicon: Metallic Dragons": True,
+			"Dragon Magazine": True,
+			"Dragons of Eberron": True,
+			"Dungeon Delve": True,
+			"Dungeon Magazine": True,
+			"Dungeon Master's Guide": True,
+			"Dungeon Master's Guide 2": True,
+			"Dungeon Master's Kit": True,
+			"E1 Death's Reach": True,
+			"E2 Kingdom of the Ghouls": True,
+			"E3 Prince of Undeath": True,
+			"Eberron Campaign Setting": True,
+			"Eberron Player's Guide": True,
+			"Elder Evils": True,
+			"Exemplars of Evil": True,
+			"FR1 Scepter Tower of Spellgard": True,
+			"Forgotten Realms Campaign Guide": True,
+			"Forgotten Realms Player's Guide": True,
+			"Fortress of the Yuan-ti": True,
+			"H1 Keep on the Shadowfell": True,
+			"H2 Thunderspire Labyrinth": True,
+			"H3 Pyramid of Shadows": True,
+			"HS1 The Slaying Stone": True,
+			"HS2 Orcs of Stonefang Pass": True,
+			"Halls of Undermountain": True,
+			"Hammerfast": True,
+			"Heroes of Shadow": True,
+			"Heroes of the Elemental Chaos": True,
+			"Heroes of the Fallen Lands": True,
+			"Heroes of the Feywild": True,
+			"Heroes of the Forgotten Kingdoms": True,
+			"Into the Unknown: The Dungeon Survival Handbook": True,
+			"Legendary Evils": True,
+			"Madness at Gardmore Abbey": True,
+			"Manual of the Planes": True,
+			"Marauders of the Dune Sea": True,
+			"Martial Power": True,
+			"Martial Power 2": True,
+			"Monster Manual": True,
+			"Monster Manual 2": True,
+			"Monster Manual 3": True,
+			"Monster Vault": True,
+			"Monster Vault: Threats to the Nentir Vale": True,
+			"Mordenkainen's Magnificent Emporium": True,
+			"Neverwinter Campaign Setting": True,
+			"Open Grave": True,
+			"P1 King of the Trollhaunt Warrens": True,
+			"P2 Demon Queen Enclave": True,
+			"P3 Assault on Nightwyrm Fortress": True,
+			"PH Heroes: Series 1": True,
+			"PH Heroes: Series 2": True,
+			"Player's Handbook": True,
+			"Player's Handbook 2": True,
+			"Player's Handbook 3": True,
+			"Player's Handbook Races: Dragonborn": True,
+			"Player's Handbook Races: Tiefling": True,
+			"Primal Power": True,
+			"Psionic Power": True,
+			"Red Box Starter Set": True,
+			"Revenge of the Giants": True,
+			"Rules Compendium": True,
+			"Savage Encounters": True,
+			"Seekers of the Ashen Crown": True,
+			"The Book of Vile Darkness": True,
+			"The Plane Above": True,
+			"The Plane Below": True,
+			"The Shadowfell": True,
+			"Tomb of Horrors": True,
+			"Underdark": True,
+			"Vor Rukoth": True,
+			"Web of the Spider Queen": True
+		}
+
 	def filterAcceptsRow(self, source_row, source_parent):
 		isRowPinned : bool = False
 		index : QModelIndex = self.sourceModel().index(source_row, 0, source_parent)
+		source : str = self.sourceModel().data(index, DDITableItemRole.test)
+		nera = super().filterAcceptsRow(source_row, source_parent) or isRowPinned
+
 		try:
 			isRowPinned = self.sourceModel().data(index, DDITableItemRole.Pinned)
 		except ValueError:
 			isRowPinned = False
-		return super().filterAcceptsRow(source_row, source_parent) or isRowPinned
+
+		for s in source.split(', '):
+			if 'DRAGON MAGAZINE' in s.upper():
+				s = 'Dragon Magazine'
+			if 'DRAGON  MAGAZINE' in s.upper():
+				s = 'Dragon Magazine'
+			if 'DUNGEON MAGAZINE' in s.upper():
+				s = 'Dungeon Magazine'
+			if self.Sources[s]:
+				return True
+
+		return isRowPinned
+
+	def invalidateSource(self, s:str):
+		self.Sources[s] = False
+
+	def validateSource(self, s:str):
+		self.Sources[s] = True
+
+	def selectNone(self):
+		for s in self.Sources:
+			self.Sources[s] = False
+
+	def selectALL(self):
+		for s in self.Sources:
+			self.Sources[s] = True
 
 class Base64Icons():
 	def PinIcon(self) -> str:
@@ -689,6 +806,127 @@ class HTMLRenderer(QWebEngineView):
 	def renderHTML(self, html: str) -> None:
 		self.setHtml(self.formatHTML(html))
 
+class DDISourceFilter(Ui_FilterTab):
+	def setupUi(self, FilterTab):
+		super().setupUi(FilterTab)
+		self.checkBoxes : list[QCheckBox] = []
+		self.Sources : list[str] = [
+			"Adventurer's Vault",
+			"Adventurer's Vault 2",
+			"Arcane Power",
+			"Beyond the Crystal Cave",
+			"City of Stormreach",
+			"Class Compendium",
+			"Council of Spiders",
+			"Dangerous Delves",
+			"Dark Sun Campaign Setting",
+			"Dark Sun Creature Catalog",
+			"Demonomicon",
+			"Divine Power",
+			"Draconomicon: Chromatic Dragons",
+			"Draconomicon: Metallic Dragons",
+			"Dragon Magazine",
+			"Dragons of Eberron",
+			"Dungeon Delve",
+			"Dungeon Magazine",
+			"Dungeon Master's Guide",
+			"Dungeon Master's Guide 2",
+			"Dungeon Master's Kit",
+			"E1 Death's Reach",
+			"E2 Kingdom of the Ghouls",
+			"E3 Prince of Undeath",
+			"Eberron Campaign Setting",
+			"Eberron Player's Guide",
+			"Elder Evils",
+			"Exemplars of Evil",
+			"FR1 Scepter Tower of Spellgard",
+			"Forgotten Realms Campaign Guide",
+			"Forgotten Realms Player's Guide",
+			"Fortress of the Yuan-ti",
+			"H1 Keep on the Shadowfell",
+			"H2 Thunderspire Labyrinth",
+			"H3 Pyramid of Shadows",
+			"HS1 The Slaying Stone",
+			"HS2 Orcs of Stonefang Pass",
+			"Halls of Undermountain",
+			"Hammerfast",
+			"Heroes of Shadow",
+			"Heroes of the Elemental Chaos",
+			"Heroes of the Fallen Lands",
+			"Heroes of the Feywild",
+			"Heroes of the Forgotten Kingdoms",
+			"Into the Unknown: The Dungeon Survival Handbook",
+			"Legendary Evils",
+			"Madness at Gardmore Abbey",
+			"Manual of the Planes",
+			"Marauders of the Dune Sea",
+			"Martial Power",
+			"Martial Power 2",
+			"Monster Manual",
+			"Monster Manual 2",
+			"Monster Manual 3",
+			"Monster Vault",
+			"Monster Vault: Threats to the Nentir Vale",
+			"Mordenkainen's Magnificent Emporium",
+			"Neverwinter Campaign Setting",
+			"Open Grave",
+			"P1 King of the Trollhaunt Warrens",
+			"P2 Demon Queen Enclave",
+			"P3 Assault on Nightwyrm Fortress",
+			"PH Heroes: Series 1",
+			"PH Heroes: Series 2",
+			"Player's Handbook",
+			"Player's Handbook 2",
+			"Player's Handbook 3",
+			"Player's Handbook Races: Dragonborn",
+			"Player's Handbook Races: Tiefling",
+			"Primal Power",
+			"Psionic Power",
+			"Red Box Starter Set",
+			"Revenge of the Giants",
+			"Rules Compendium",
+			"Savage Encounters",
+			"Seekers of the Ashen Crown",
+			"The Book of Vile Darkness",
+			"The Plane Above",
+			"The Plane Below",
+			"The Shadowfell",
+			"Tomb of Horrors",
+			"Underdark",
+			"Vor Rukoth",
+			"Web of the Spider Queen"
+		]
+		self.createSourceList()
+		self.selectAll.clicked.connect(self.actionSelectAll)
+		self.selectNone.clicked.connect(self.actionSelectNone)
+
+	def createSourceList(self):
+		row : int = 0
+		column : int = 0
+		for source in self.Sources:
+			newCheckBox = QCheckBox(source)
+			self.checkBoxes.append(newCheckBox)
+			#newCheckBox.setText(newCheckBox.fontMetrics().elidedText(source, Qt.TextElideMode.ElideRight, 260))
+			newCheckBox.setChecked(True)
+			self.gL_3.addWidget(newCheckBox, row, column, 1, 1)
+			if column == 1:
+				column = 0
+				row += 1
+			else:
+				column += 1
+
+	def actionSelectAll(self):
+		for source in self.checkBoxes:
+			source.blockSignals(True)
+			source.setChecked(True)
+			source.blockSignals(False)
+
+	def actionSelectNone(self):
+		for source in self.checkBoxes:
+			source.blockSignals(True)
+			source.setChecked(False)
+			source.blockSignals(False)
+
 class CompendiumScreen(Ui_ScreenView):
 	def __init__(self):
 		super().__init__()
@@ -709,21 +947,26 @@ class CompendiumScreen(Ui_ScreenView):
 
 	def setupUi(self, Screen) -> None:
 		super().setupUi(Screen)
+
 		self.webViewer = HTMLRenderer()
 		self.filterOptions = QTabWidget()
-		newTab = QWidget()
-		newTab.setObjectName('Sourcebook Filters')
-		self.filterOptions.addTab(newTab, 'Sourcebook Filters')
 		self.gL_2.addWidget(self.webViewer)
 		self.swap1 = self.webViewer
 		self.swap2 = self.filterOptions
 		self.filterOptions.setMinimumSize(625,0)
 		self.filterOptions.setMaximumWidth(625)
+
 		newTab = QWidget()
-		newTab.setObjectName('test')
-		self.filterOptions.addTab(newTab, 'test')
-		TestUI = Ui_FilterTab()
-		TestUI.setupUi(newTab)
+		newTab.setObjectName('Sourcebook Filters')
+		self.filterOptions.addTab(newTab, 'Sourcebook Filters')
+		self.TestUI = DDISourceFilter()
+		self.TestUI.setupUi(newTab)
+		self.TestUI.selectAll.clicked.connect(self.selectAll)
+		self.TestUI.selectNone.clicked.connect(self.selectNone)
+		self.stringM = ''
+		for cb in self.TestUI.checkBoxes:
+			cb.checkStateChanged.connect(lambda state, x=cb: self.sourceFilterChanged(x))
+
 		self.model : QStandardItemModel = QStandardItemModel()
 		self.columnsList = [
 			"",
@@ -741,9 +984,25 @@ class CompendiumScreen(Ui_ScreenView):
 
 		self.setupDDITable()
 		self.searchModel : QStandardItemModel = self.model
+		self.testModel : QStandardItemModel = self.model
+		self.proxyFilter = PinableBookmarkbleFilterProxy()
+		self.proxyFilter.setSourceModel(self.model)
+		self.proxyFilter.setDynamicSortFilter(False)
+		self.proxyFilter.setFilterKeyColumn(0)
+		self.proxyFilter.setFilterRole(DDITableItemRole.test)
+		self.proxyFilter.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+		self.ddiTable.setModel(self.proxyFilter)
+
+	def selectAll(self):
+		self.proxyFilter.selectALL()
+		self.proxyFilter.setFilterRegularExpression('')
+
+	def selectNone(self):
+		self.proxyFilter.selectNone()
+		self.proxyFilter.setFilterRegularExpression('')
 
 	def setupDDITable(self) -> None:
-		self.ddiTable.setModel(self.model)
+		#self.ddiTable.setModel(self.model)
 		self.ddiTable.horizontalHeader().resizeSections(QHeaderView.ResizeMode.Stretch)
 		#self.ddiTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
 		#self.ddiTable.horizontalHeader().setCascadingSectionResizes(True)
@@ -781,7 +1040,7 @@ class CompendiumScreen(Ui_ScreenView):
 		newButton = QPushButton('Filters')
 		newButton.clicked.connect(self.changeView)
 		return newButton
-	
+
 	def changeView(self):
 		self.gL_2.replaceWidget(self.swap1, self.swap2)
 		self.webViewer.setVisible(not self.webViewer.isVisible())
@@ -868,6 +1127,7 @@ class CompendiumScreen(Ui_ScreenView):
 		newRow.setData(ddiObject, DDITableItemRole.Data)
 		newRow.setData(ddiObject.getType().category.title, DDITableItemRole.Category)
 		newRow.setData(False, DDITableItemRole.Pinned)
+		newRow.setData(ddiObject.getSource(), DDITableItemRole.test)
 		self.model.appendRow(newRow)
 
 	def populateRow(self, row: int, ddiObject: ddiObject) -> None:
@@ -995,19 +1255,19 @@ class CompendiumScreen(Ui_ScreenView):
 		proxyFilter.setFilterRole(0)
 		proxyFilter.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
-		proxyFilter.setFilterRegularExpression(text)
+		#proxyFilter.setFilterRegularExpression(text)
 		self.ddiTable.setModel(proxyFilter)
 		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML()))
 
 	def changeTable(self, category: Categories) -> None:
 		if category is Categories.ALL:
-			self.ddiTable.setModel(self.model)
+			#self.ddiTable.setModel(self.model)
 			self.searchModel = self.model
 		else:
 			proxyFilter = PinableBookmarkbleFilterProxy()
 			proxyFilter.setSourceModel(self.model)
 			proxyFilter.setFilterRole(DDITableItemRole.Category)
-			proxyFilter.setFilterRegularExpression(category.title)
+			#proxyFilter.setFilterRegularExpression(category.title)
 			self.searchModel = proxyFilter
 			self.ddiTable.setModel(proxyFilter)
 
@@ -1028,3 +1288,13 @@ class CompendiumScreen(Ui_ScreenView):
 
 		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML()))
 		self.ddiTable.horizontalHeader().resizeSections(QHeaderView.ResizeMode.ResizeToContents)
+
+	def sourceFilterChanged(self, cb:QCheckBox):
+		if not cb.isChecked():
+			self.proxyFilter.invalidateSource(cb.text())
+			self.proxyFilter.setFilterRegularExpression('')
+		else:
+			self.proxyFilter.validateSource(cb.text())
+			self.proxyFilter.setFilterRegularExpression('')
+			pass
+		pass
