@@ -364,6 +364,10 @@ class DDIParser:
 		m.setIsChanged(tokens[6])
 		m.setSource(self.processString(tokens[7]))
 		m.setTeaser(tokens[8])
+		if '<h2>' in tokens[9]:
+			m.setIsPostMM3('S')
+		else:
+			m.setIsPostMM3('N')
 		m.setHTML(self.processHTML(tokens[9]))
 		m.setSize(self.retriveSize(tokens[9]))
 		m.setXP(tokens[10])
@@ -509,6 +513,7 @@ class DDITableItemRole(IntEnum):
 	Category = 33
 	Pinned = 34
 	Source = 35
+	test = 36
 
 class PinableBookmarkbleFilterProxy(QSortFilterProxyModel):
 	def filterAcceptsRow(self, source_row, source_parent):
@@ -1182,6 +1187,8 @@ class CompendiumScreen(Ui_ScreenView):
 		newRow.setData(ddiObject.getType().category.title, DDITableItemRole.Category)
 		newRow.setData(False, DDITableItemRole.Pinned)
 		newRow.setData(ddiObject.getSource(), DDITableItemRole.Source)
+		if isinstance(ddiObject, Monster):
+			newRow.setData(ddiObject.getIsPostMM3(), DDITableItemRole.test)
 		self.model.appendRow(newRow)
 
 	def populateRow(self, row: int, ddiObject: ddiObject) -> None:
@@ -1304,7 +1311,9 @@ class CompendiumScreen(Ui_ScreenView):
 
 	def textChanged(self, text: str) -> None:
 		self.lastSearch = text
-		self.SearchFilter.setFilterRegularExpression(text)
+		self.SearchFilter.setFilterKeyColumn(0)
+		self.SearchFilter.setFilterRole(DDITableItemRole.test)
+		self.SearchFilter.setFilterRegularExpression('S')
 		self.ddiTable.setModel(self.SearchFilter)
 		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML()))
 
