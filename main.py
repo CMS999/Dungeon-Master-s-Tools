@@ -27,7 +27,7 @@ class MainWindow(QMainWindow):
 			self.toolList[0].addSeparator()
 			self.toolList[0].addWidget(self.Compendium.createFilterLine())
 			self.toolList[0].addSeparator()
-			self.toolList[0].addWidget(self.Compendium.createFilterOptions())
+			self.toolList[0].addWidget(self.Compendium.createFilters())
 
 		if not os.path.isdir('Modules'):
 			os.makedirs("Modules")

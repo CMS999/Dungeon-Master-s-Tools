@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QAbstractScrollArea, QApplicat
 	QTableWidget, QTableWidgetItem, QWidget, QItemDelegate, QMenu, QComboBox, QToolBar, QLineEdit, QPushButton, QTabWidget, QCheckBox)
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
 	QMetaObject, QObject, QPoint, QRect,
-	QSize, QTime, QUrl, Qt, QSortFilterProxyModel, QModelIndex, QItemSelectionModel, Qt, QByteArray, QRegularExpression)
+	QSize, QTime, QUrl, Qt, QSortFilterProxyModel, QModelIndex, QItemSelectionModel, Qt, QByteArray, QRegularExpression, QAbstractItemModel)
 from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 	QFont, QFontDatabase, QGradient, QIcon,
 	QImage, QKeySequence, QLinearGradient, QPainter,
@@ -508,9 +508,21 @@ class DDITableItemRole(IntEnum):
 	Data = 32
 	Category = 33
 	Pinned = 34
-	test = 35
+	Source = 35
 
 class PinableBookmarkbleFilterProxy(QSortFilterProxyModel):
+	def filterAcceptsRow(self, source_row, source_parent):
+		isRowPinned : bool = False
+		index : QModelIndex = self.sourceModel().index(source_row, 0)
+
+		try:
+			isRowPinned = self.sourceModel().data(index, DDITableItemRole.Pinned)
+		except ValueError:
+			isRowPinned = False
+
+		return isRowPinned or super().filterAcceptsRow(source_row, source_parent)
+
+class PinableSourceFilterProxy(QSortFilterProxyModel):
 	def __init__(self):
 		super().__init__()
 		self.Sources : dict[str:bool] = {
@@ -602,9 +614,8 @@ class PinableBookmarkbleFilterProxy(QSortFilterProxyModel):
 
 	def filterAcceptsRow(self, source_row, source_parent):
 		isRowPinned : bool = False
-		index : QModelIndex = self.sourceModel().index(source_row, 0, source_parent)
-		source : str = self.sourceModel().data(index, DDITableItemRole.test)
-		nera = super().filterAcceptsRow(source_row, source_parent) or isRowPinned
+		index : QModelIndex = self.sourceModel().index(source_row, 0)
+		source : str = self.sourceModel().data(index, DDITableItemRole.Source)
 
 		try:
 			isRowPinned = self.sourceModel().data(index, DDITableItemRole.Pinned)
@@ -623,11 +634,8 @@ class PinableBookmarkbleFilterProxy(QSortFilterProxyModel):
 
 		return isRowPinned
 
-	def invalidateSource(self, s:str):
-		self.Sources[s] = False
-
-	def validateSource(self, s:str):
-		self.Sources[s] = True
+	def flipSource(self, source:str) -> None:
+		self.Sources[source] = not self.Sources[source]
 
 	def selectNone(self):
 		for s in self.Sources:
@@ -806,11 +814,23 @@ class HTMLRenderer(QWebEngineView):
 	def renderHTML(self, html: str) -> None:
 		self.setHtml(self.formatHTML(html))
 
+class DataQCheckBox(QCheckBox):
+	def __init__(self, text:str):
+		super().__init__(text)
+		self.data = None
+
 class DDISourceFilter(Ui_FilterTab):
 	def setupUi(self, FilterTab):
 		super().setupUi(FilterTab)
-		self.checkBoxes : list[QCheckBox] = []
-		self.Sources : list[str] = [
+		self.checkBoxes : list[DataQCheckBox] = []
+		self.createSourceList()
+		self.selectAll.clicked.connect(self.actionSelectAll)
+		self.selectNone.clicked.connect(self.actionSelectNone)
+
+	def createSourceList(self):
+		row : int = 0
+		column : int = 0
+		Sources : list[str] = [
 			"Adventurer's Vault",
 			"Adventurer's Vault 2",
 			"Arcane Power",
@@ -896,17 +916,11 @@ class DDISourceFilter(Ui_FilterTab):
 			"Vor Rukoth",
 			"Web of the Spider Queen"
 		]
-		self.createSourceList()
-		self.selectAll.clicked.connect(self.actionSelectAll)
-		self.selectNone.clicked.connect(self.actionSelectNone)
-
-	def createSourceList(self):
-		row : int = 0
-		column : int = 0
-		for source in self.Sources:
-			newCheckBox = QCheckBox(source)
+		for source in Sources:
+			newCheckBox = DataQCheckBox(source)
 			self.checkBoxes.append(newCheckBox)
-			#newCheckBox.setText(newCheckBox.fontMetrics().elidedText(source, Qt.TextElideMode.ElideRight, 260))
+			newCheckBox.setText(newCheckBox.fontMetrics().elidedText(source, Qt.TextElideMode.ElideRight, 260))
+			newCheckBox.data = source
 			newCheckBox.setChecked(True)
 			self.gL_3.addWidget(newCheckBox, row, column, 1, 1)
 			if column == 1:
@@ -948,27 +962,17 @@ class CompendiumScreen(Ui_ScreenView):
 	def setupUi(self, Screen) -> None:
 		super().setupUi(Screen)
 
-		self.webViewer = HTMLRenderer()
-		self.filterOptions = QTabWidget()
+		self.webViewer = self.createWebViewer()
+		self.Filters = self.createFilterTab()
 		self.gL_2.addWidget(self.webViewer)
 		self.swap1 = self.webViewer
-		self.swap2 = self.filterOptions
-		self.filterOptions.setMinimumSize(625,0)
-		self.filterOptions.setMaximumWidth(625)
-
-		newTab = QWidget()
-		newTab.setObjectName('Sourcebook Filters')
-		self.filterOptions.addTab(newTab, 'Sourcebook Filters')
-		self.TestUI = DDISourceFilter()
-		self.TestUI.setupUi(newTab)
-		self.TestUI.selectAll.clicked.connect(self.selectAll)
-		self.TestUI.selectNone.clicked.connect(self.selectNone)
-		self.stringM = ''
-		for cb in self.TestUI.checkBoxes:
-			cb.checkStateChanged.connect(lambda state, x=cb: self.sourceFilterChanged(x))
+		self.swap2 = self.Filters
+		newTab = self.addFilterTab('Sourcebook Filters')
+		self.sfTab = self.createSourcebookFilterTab(newTab)
 
 		self.model : QStandardItemModel = QStandardItemModel()
-		self.columnsList = [
+		
+		columnsList = [
 			"",
 			"Column1",
 			"Column2",
@@ -979,27 +983,77 @@ class CompendiumScreen(Ui_ScreenView):
 			"Column7",
 			"Column8"
 		]
-		self.model.setHorizontalHeaderLabels(self.columnsList)
+		
+		self.model.setHorizontalHeaderLabels(columnsList)
+		
 		self.populateModel()
 
 		self.setupDDITable()
-		self.searchModel : QStandardItemModel = self.model
-		self.testModel : QStandardItemModel = self.model
-		self.proxyFilter = PinableBookmarkbleFilterProxy()
-		self.proxyFilter.setSourceModel(self.model)
-		self.proxyFilter.setDynamicSortFilter(False)
-		self.proxyFilter.setFilterKeyColumn(0)
-		self.proxyFilter.setFilterRole(DDITableItemRole.test)
-		self.proxyFilter.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-		self.ddiTable.setModel(self.proxyFilter)
+		
+		self.SourceFilter = self.createSourceFilterProxy(self.model)
+		self.CategoryFilter = self.createCategoryFilterProxy(self.SourceFilter)
+		self.SearchFilter = self.createSearchFilter(self.CategoryFilter)
+		self.lastSearch : str = ''
+		
+		self.ddiTable.setModel(self.SourceFilter)
+		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML()))
+
+	def createSearchFilter(self, model:QAbstractItemModel) -> PinableBookmarkbleFilterProxy:
+		sFilter = PinableBookmarkbleFilterProxy()
+		sFilter.setSourceModel(model)
+		sFilter.setFilterKeyColumn(1)
+		sFilter.setFilterRole(0)
+		sFilter.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+		return sFilter
+
+	def createSourcebookFilterTab(self, tab:QWidget):
+		sfTab = DDISourceFilter()
+		sfTab.setupUi(tab)
+		sfTab.selectAll.clicked.connect(self.selectAll)
+		sfTab.selectNone.clicked.connect(self.selectNone)
+		for checkBox in sfTab.checkBoxes:
+			checkBox.checkStateChanged.connect(lambda state, x=checkBox: self.sourceFilterChanged(x))
+		return sfTab
+
+	def createCategoryFilterProxy(self, model:QAbstractItemModel) -> PinableBookmarkbleFilterProxy:
+		sFilter = PinableBookmarkbleFilterProxy()
+		sFilter.setFilterKeyColumn(0)
+		sFilter.setFilterRole(DDITableItemRole.Category)
+		sFilter.setSourceModel(model)
+		return sFilter
+
+	def createSourceFilterProxy(self, model:QAbstractItemModel) -> PinableSourceFilterProxy:
+		psFilter = PinableSourceFilterProxy()
+		psFilter.setSourceModel(model)
+		psFilter.setDynamicSortFilter(True)
+		psFilter.setFilterKeyColumn(0)
+		psFilter.setFilterRole(DDITableItemRole.Source)
+		psFilter.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+		return psFilter
+	
+	def createFilterTab(self) -> QTabWidget:
+		filterTab = QTabWidget()
+		filterTab.setMinimumSize(625,0)
+		filterTab.setMaximumWidth(625)
+		return filterTab
+
+	def addFilterTab(self, name:str) -> QWidget:
+		newTab = QWidget()
+		newTab.setObjectName(name)
+		self.Filters.addTab(newTab, name)
+		return newTab
+
+	def createWebViewer(self) -> HTMLRenderer:
+		wViewer = HTMLRenderer()
+		return wViewer
 
 	def selectAll(self):
-		self.proxyFilter.selectALL()
-		self.proxyFilter.setFilterRegularExpression('')
+		self.SourceFilter.selectALL()
+		self.SourceFilter.setFilterRegularExpression('')
 
 	def selectNone(self):
-		self.proxyFilter.selectNone()
-		self.proxyFilter.setFilterRegularExpression('')
+		self.SourceFilter.selectNone()
+		self.SourceFilter.setFilterRegularExpression('')
 
 	def setupDDITable(self) -> None:
 		#self.ddiTable.setModel(self.model)
@@ -1036,7 +1090,7 @@ class CompendiumScreen(Ui_ScreenView):
 		newLineEdit.textEdited.connect(lambda: self.textChanged(newLineEdit.text()))
 		return newLineEdit
 
-	def createFilterOptions(self) -> QPushButton:
+	def createFilters(self) -> QPushButton:
 		newButton = QPushButton('Filters')
 		newButton.clicked.connect(self.changeView)
 		return newButton
@@ -1044,7 +1098,7 @@ class CompendiumScreen(Ui_ScreenView):
 	def changeView(self):
 		self.gL_2.replaceWidget(self.swap1, self.swap2)
 		self.webViewer.setVisible(not self.webViewer.isVisible())
-		self.filterOptions.setVisible(not self.filterOptions.isVisible())
+		self.Filters.setVisible(not self.Filters.isVisible())
 		temp = self.swap2
 		self.swap2 = self.swap1
 		self.swap1 = temp
@@ -1127,7 +1181,7 @@ class CompendiumScreen(Ui_ScreenView):
 		newRow.setData(ddiObject, DDITableItemRole.Data)
 		newRow.setData(ddiObject.getType().category.title, DDITableItemRole.Category)
 		newRow.setData(False, DDITableItemRole.Pinned)
-		newRow.setData(ddiObject.getSource(), DDITableItemRole.test)
+		newRow.setData(ddiObject.getSource(), DDITableItemRole.Source)
 		self.model.appendRow(newRow)
 
 	def populateRow(self, row: int, ddiObject: ddiObject) -> None:
@@ -1249,27 +1303,18 @@ class CompendiumScreen(Ui_ScreenView):
 				self.populateRow(self.model.rowCount()-1, ddiEntry)
 
 	def textChanged(self, text: str) -> None:
-		proxyFilter = PinableBookmarkbleFilterProxy()
-		proxyFilter.setSourceModel(self.searchModel)
-		proxyFilter.setFilterKeyColumn(1)
-		proxyFilter.setFilterRole(0)
-		proxyFilter.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-
-		#proxyFilter.setFilterRegularExpression(text)
-		self.ddiTable.setModel(proxyFilter)
+		self.lastSearch = text
+		self.SearchFilter.setFilterRegularExpression(text)
+		self.ddiTable.setModel(self.SearchFilter)
 		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML()))
 
 	def changeTable(self, category: Categories) -> None:
 		if category is Categories.ALL:
-			#self.ddiTable.setModel(self.model)
-			self.searchModel = self.model
-		else:
-			proxyFilter = PinableBookmarkbleFilterProxy()
-			proxyFilter.setSourceModel(self.model)
-			proxyFilter.setFilterRole(DDITableItemRole.Category)
-			#proxyFilter.setFilterRegularExpression(category.title)
-			self.searchModel = proxyFilter
-			self.ddiTable.setModel(proxyFilter)
+			self.CategoryFilter.setFilterRegularExpression('')
+		else:	
+			self.CategoryFilter.setFilterRegularExpression(category.title)
+		
+		self.ddiTable.setModel(self.CategoryFilter)
 
 		for headerItem in range(self.model.columnCount()):
 			self.ddiTable.hideColumn(headerItem)
@@ -1286,15 +1331,12 @@ class CompendiumScreen(Ui_ScreenView):
 				self.ddiTable.showColumn(headerItem)
 				self.model.horizontalHeaderItem(headerItem).setText(columnName)
 
-		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML()))
+		
 		self.ddiTable.horizontalHeader().resizeSections(QHeaderView.ResizeMode.ResizeToContents)
+		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML()))
+		if self.lastSearch != '':
+			self.textChanged(self.lastSearch)
 
-	def sourceFilterChanged(self, cb:QCheckBox):
-		if not cb.isChecked():
-			self.proxyFilter.invalidateSource(cb.text())
-			self.proxyFilter.setFilterRegularExpression('')
-		else:
-			self.proxyFilter.validateSource(cb.text())
-			self.proxyFilter.setFilterRegularExpression('')
-			pass
-		pass
+	def sourceFilterChanged(self, cb:DataQCheckBox):
+		self.SourceFilter.flipSource(cb.data)
+		self.SourceFilter.setFilterRegularExpression('')
