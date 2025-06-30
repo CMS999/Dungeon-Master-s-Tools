@@ -1,6 +1,8 @@
 from .ScreenView import Ui_ScreenView
 from .DDIDataStructures import *
-from .FilterTest import Ui_FilterTab
+from .SourceFilter import Ui_FilterTab
+from .ColumnFilter import Ui_ColumnFilter
+from .ExtraFilters import Ui_extraFilters
 
 from threading import Thread
 from queue import Queue
@@ -972,9 +974,18 @@ class CompendiumScreen(Ui_ScreenView):
 		self.gL_2.addWidget(self.webViewer)
 		self.swap1 = self.webViewer
 		self.swap2 = self.Filters
+		
+		newTab = self.addFilterTab('Primary Filters')
+		n = Ui_ColumnFilter()
+		self.pfTab = n.setupUi(newTab)
+		
 		newTab = self.addFilterTab('Sourcebook Filters')
 		self.sfTab = self.createSourcebookFilterTab(newTab)
-
+		
+		newTab = self.addFilterTab('Extra Filters')
+		n = Ui_extraFilters()
+		self.efTab = n.setupUi(newTab)
+		
 		self.model : QStandardItemModel = QStandardItemModel()
 		
 		columnsList = [
@@ -998,10 +1009,9 @@ class CompendiumScreen(Ui_ScreenView):
 		self.SourceFilter = self.createSourceFilterProxy(self.model)
 		self.CategoryFilter = self.createCategoryFilterProxy(self.SourceFilter)
 		self.SearchFilter = self.createSearchFilter(self.CategoryFilter)
-		self.lastSearch : str = ''
 		
-		self.ddiTable.setModel(self.SourceFilter)
-		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML()))
+		self.ddiTable.setModel(self.SearchFilter)
+		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.itemSelected())
 
 	def createSearchFilter(self, model:QAbstractItemModel) -> PinableBookmarkbleFilterProxy:
 		sFilter = PinableBookmarkbleFilterProxy()
@@ -1189,6 +1199,8 @@ class CompendiumScreen(Ui_ScreenView):
 		newRow.setData(ddiObject.getSource(), DDITableItemRole.Source)
 		if isinstance(ddiObject, Monster):
 			newRow.setData(ddiObject.getIsPostMM3(), DDITableItemRole.test)
+		else:
+			newRow.setData('S', DDITableItemRole.test)
 		self.model.appendRow(newRow)
 
 	def populateRow(self, row: int, ddiObject: ddiObject) -> None:
@@ -1309,25 +1321,25 @@ class CompendiumScreen(Ui_ScreenView):
 				self.createRow(ddiEntry)
 				self.populateRow(self.model.rowCount()-1, ddiEntry)
 
+	def itemSelected(self):
+		try:
+			self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML())
+			if self.swap1 != self.webViewer:
+				self.changeView()
+		except:
+			pass
+
 	def textChanged(self, text: str) -> None:
-		self.lastSearch = text
-		self.SearchFilter.setFilterKeyColumn(0)
-		self.SearchFilter.setFilterRole(DDITableItemRole.test)
-		self.SearchFilter.setFilterRegularExpression('S')
-		self.ddiTable.setModel(self.SearchFilter)
-		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML()))
+		self.SearchFilter.setFilterRegularExpression(text)
 
 	def changeTable(self, category: Categories) -> None:
 		if category is Categories.ALL:
 			self.CategoryFilter.setFilterRegularExpression('')
 		else:	
 			self.CategoryFilter.setFilterRegularExpression(category.title)
-		
-		self.ddiTable.setModel(self.CategoryFilter)
 
 		for headerItem in range(self.model.columnCount()):
 			self.ddiTable.hideColumn(headerItem)
-
 		#ugly
 		if category is Categories.ALL:
 			self.ddiTable.showColumn(0)
@@ -1339,12 +1351,14 @@ class CompendiumScreen(Ui_ScreenView):
 			for headerItem, columnName in enumerate(category.fields):
 				self.ddiTable.showColumn(headerItem)
 				self.model.horizontalHeaderItem(headerItem).setText(columnName)
-
 		
-		self.ddiTable.horizontalHeader().resizeSections(QHeaderView.ResizeMode.ResizeToContents)
-		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.webViewer.renderHTML(self.ddiTable.model().index(self.ddiTable.currentIndex().row(), 0).data(32).getHTML()))
-		if self.lastSearch != '':
-			self.textChanged(self.lastSearch)
+		self.ddiTable.horizontalHeader().resizeSections(QHeaderView.ResizeMode.Stretch)
+		
+		#set horizontal header zero to it's ideal size
+		self.ddiTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+		idealSize = self.ddiTable.horizontalHeader().sectionSize(0)
+		self.ddiTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+		self.ddiTable.horizontalHeader().resizeSection(0, idealSize)
 
 	def sourceFilterChanged(self, cb:DataQCheckBox):
 		self.SourceFilter.flipSource(cb.data)
