@@ -367,9 +367,9 @@ class DDIParser:
 		m.setSource(self.processString(tokens[7]))
 		m.setTeaser(tokens[8])
 		if '<h2>' in tokens[9]:
-			m.setIsPostMM3('S')
+			m.setIsPostMM3(True)
 		else:
-			m.setIsPostMM3('N')
+			m.setIsPostMM3(False)
 		m.setHTML(self.processHTML(tokens[9]))
 		m.setSize(self.retriveSize(tokens[9]))
 		m.setXP(tokens[10])
@@ -515,19 +515,22 @@ class DDITableItemRole(IntEnum):
 	Category = 33
 	Pinned = 34
 	Source = 35
-	test = 36
+	IsPostMM3 = 36
 
 class PinableBookmarkbleFilterProxy(QSortFilterProxyModel):
 	def filterAcceptsRow(self, source_row, source_parent):
+		if super().filterAcceptsRow(source_row, source_parent):
+			return True
+		
 		isRowPinned : bool = False
-		index : QModelIndex = self.sourceModel().index(source_row, 0)
-
+		model : QAbstractItemModel = self.sourceModel()
+		
 		try:
-			isRowPinned = self.sourceModel().data(index, DDITableItemRole.Pinned)
+			isRowPinned = model.data(model.index(source_row, 0), DDITableItemRole.Pinned)
 		except ValueError:
 			isRowPinned = False
 
-		return isRowPinned or super().filterAcceptsRow(source_row, source_parent)
+		return isRowPinned
 
 class PinableSourceFilterProxy(QSortFilterProxyModel):
 	def __init__(self):
@@ -620,24 +623,24 @@ class PinableSourceFilterProxy(QSortFilterProxyModel):
 		}
 
 	def filterAcceptsRow(self, source_row, source_parent):
-		isRowPinned : bool = False
-		index : QModelIndex = self.sourceModel().index(source_row, 0)
-		source : str = self.sourceModel().data(index, DDITableItemRole.Source)
+		model : QAbstractItemModel = self.sourceModel()
+		index : QModelIndex = model.index(source_row, 0)
+		source : str = model.data(index, DDITableItemRole.Source)
 
+		for source in source.split(', '):
+			if 'agazine' in source:
+				if 'ragon' in source:
+					source = 'Dragon Magazine'
+				if 'ungeon' in source:
+					source = 'Dungeon Magazine'
+			if self.Sources[source]:
+				return True
+
+		isRowPinned : bool = False
 		try:
-			isRowPinned = self.sourceModel().data(index, DDITableItemRole.Pinned)
+			isRowPinned = model.data(index, DDITableItemRole.Pinned)
 		except ValueError:
 			isRowPinned = False
-
-		for s in source.split(', '):
-			if 'DRAGON MAGAZINE' in s.upper():
-				s = 'Dragon Magazine'
-			if 'DRAGON  MAGAZINE' in s.upper():
-				s = 'Dragon Magazine'
-			if 'DUNGEON MAGAZINE' in s.upper():
-				s = 'Dungeon Magazine'
-			if self.Sources[s]:
-				return True
 
 		return isRowPinned
 
@@ -645,12 +648,12 @@ class PinableSourceFilterProxy(QSortFilterProxyModel):
 		self.Sources[source] = not self.Sources[source]
 
 	def selectNone(self):
-		for s in self.Sources:
-			self.Sources[s] = False
+		for source in self.Sources:
+			self.Sources[source] = False
 
 	def selectALL(self):
-		for s in self.Sources:
-			self.Sources[s] = True
+		for source in self.Sources:
+			self.Sources[source] = True
 
 class Base64Icons():
 	def PinIcon(self) -> str:
@@ -974,20 +977,23 @@ class CompendiumScreen(Ui_ScreenView):
 		self.gL_2.addWidget(self.webViewer)
 		self.swap1 = self.webViewer
 		self.swap2 = self.Filters
-		
+
 		newTab = self.addFilterTab('Primary Filters')
 		n = Ui_ColumnFilter()
 		self.pfTab = n.setupUi(newTab)
-		
+
 		newTab = self.addFilterTab('Sourcebook Filters')
 		self.sfTab = self.createSourcebookFilterTab(newTab)
-		
+
 		newTab = self.addFilterTab('Extra Filters')
 		n = Ui_extraFilters()
-		self.efTab = n.setupUi(newTab)
-		
+		n.setupUi(newTab)
+		self.efTab = n
+		self.efTab.MM3Box.setChecked(True)
+		self.efTab.MM3Box.checkStateChanged.connect(lambda state, x=self.efTab.MM3Box: self.filterPreMM3Monsters(x))
+
 		self.model : QStandardItemModel = QStandardItemModel()
-		
+
 		columnsList = [
 			"",
 			"Column1",
@@ -999,19 +1005,33 @@ class CompendiumScreen(Ui_ScreenView):
 			"Column7",
 			"Column8"
 		]
-		
+
 		self.model.setHorizontalHeaderLabels(columnsList)
-		
+
 		self.populateModel()
 
 		self.setupDDITable()
-		
+
 		self.SourceFilter = self.createSourceFilterProxy(self.model)
-		self.CategoryFilter = self.createCategoryFilterProxy(self.SourceFilter)
+		self.preMM3Filter = self.createMM3FilterProxy(self.SourceFilter)
+		self.CategoryFilter = self.createCategoryFilterProxy(self.preMM3Filter)
 		self.SearchFilter = self.createSearchFilter(self.CategoryFilter)
-		
+
 		self.ddiTable.setModel(self.SearchFilter)
 		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.itemSelected())
+
+	def filterPreMM3Monsters(self, cBox:QCheckBox):
+		if cBox.isChecked():
+			self.preMM3Filter.setFilterRegularExpression('')
+		else:
+			self.preMM3Filter.setFilterRegularExpression('Y')
+
+	def createMM3FilterProxy(self, model:QAbstractItemModel) -> PinableBookmarkbleFilterProxy:
+		sFilter = PinableBookmarkbleFilterProxy()
+		sFilter.setFilterKeyColumn(0)
+		sFilter.setFilterRole(DDITableItemRole.IsPostMM3)
+		sFilter.setSourceModel(model)
+		return sFilter
 
 	def createSearchFilter(self, model:QAbstractItemModel) -> PinableBookmarkbleFilterProxy:
 		sFilter = PinableBookmarkbleFilterProxy()
@@ -1045,7 +1065,7 @@ class CompendiumScreen(Ui_ScreenView):
 		psFilter.setFilterRole(DDITableItemRole.Source)
 		psFilter.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 		return psFilter
-	
+
 	def createFilterTab(self) -> QTabWidget:
 		filterTab = QTabWidget()
 		filterTab.setMinimumSize(625,0)
@@ -1197,10 +1217,10 @@ class CompendiumScreen(Ui_ScreenView):
 		newRow.setData(ddiObject.getType().category.title, DDITableItemRole.Category)
 		newRow.setData(False, DDITableItemRole.Pinned)
 		newRow.setData(ddiObject.getSource(), DDITableItemRole.Source)
-		if isinstance(ddiObject, Monster):
-			newRow.setData(ddiObject.getIsPostMM3(), DDITableItemRole.test)
-		else:
-			newRow.setData('S', DDITableItemRole.test)
+		newRow.setData('Y', DDITableItemRole.IsPostMM3)
+		if isinstance(ddiObject, Monster) and not ddiObject.getIsPostMM3():
+			newRow.setData('N', DDITableItemRole.IsPostMM3)
+			
 		self.model.appendRow(newRow)
 
 	def populateRow(self, row: int, ddiObject: ddiObject) -> None:
@@ -1335,7 +1355,7 @@ class CompendiumScreen(Ui_ScreenView):
 	def changeTable(self, category: Categories) -> None:
 		if category is Categories.ALL:
 			self.CategoryFilter.setFilterRegularExpression('')
-		else:	
+		else:
 			self.CategoryFilter.setFilterRegularExpression(category.title)
 
 		for headerItem in range(self.model.columnCount()):
@@ -1351,9 +1371,9 @@ class CompendiumScreen(Ui_ScreenView):
 			for headerItem, columnName in enumerate(category.fields):
 				self.ddiTable.showColumn(headerItem)
 				self.model.horizontalHeaderItem(headerItem).setText(columnName)
-		
+
 		self.ddiTable.horizontalHeader().resizeSections(QHeaderView.ResizeMode.Stretch)
-		
+
 		#set horizontal header zero to it's ideal size
 		self.ddiTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
 		idealSize = self.ddiTable.horizontalHeader().sectionSize(0)

@@ -475,7 +475,7 @@ class Monster(ddiObject):
 		self.XP : int = None
 		self.Keywords : str = None
 		self.Size : str = None
-		self.IsPostMM3 : str = None
+		self.IsPostMM3 : bool = None
 
 	def setLevel(self, Level: str):
 		self.Level = int(Level)
@@ -504,7 +504,7 @@ class Monster(ddiObject):
 	def setSize(self, Size: str):
 		self.Size = Size
 
-	def setIsPostMM3(self, IsPostMM3: str):
+	def setIsPostMM3(self, IsPostMM3: bool):
 		self.IsPostMM3 = IsPostMM3
 
 	def getLevel(self) -> int:
@@ -534,7 +534,7 @@ class Monster(ddiObject):
 	def getSize(self) -> str:
 		return self.Size
 
-	def getIsPostMM3(self) -> str:
+	def getIsPostMM3(self) -> bool:
 		return self.IsPostMM3
 
 class ParagonPath(ddiObject):

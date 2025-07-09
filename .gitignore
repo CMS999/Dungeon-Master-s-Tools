@@ -4,6 +4,7 @@
 /build
 /dist
 /data
+/testing
 /__pycache__
 **/*/__pycache__
 *.ui
