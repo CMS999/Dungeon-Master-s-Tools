@@ -133,7 +133,7 @@ class Associate(ddiObject):
 	def __init__(self):
 		super().__init__()
 		self.TypeA : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 
 	def setTypeA(self, Type: str):
 		self.TypeA = Type
@@ -153,7 +153,7 @@ class Background(ddiObject):
 		self.TypeB : str = ''
 		self.Campaign : str = ''
 		self.Skills : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 		self.prerequisite : str = ''
 
 	def setTypeB(self, TypeB: str):
@@ -192,9 +192,9 @@ class Classe(ddiObject):
 		self.Power : str = ''
 		self.Role : str = ''
 		self.Abilities : str = ''
-		self.IsNew : bool = None
-		self.IsChanged : bool = None
-		self.Teaser : int = None
+		self.IsNew : bool = False
+		self.IsChanged : bool = False
+		self.Teaser : int = 0
 
 	def setPower(self, Power: str):
 		self.Power = Power
@@ -236,7 +236,7 @@ class Companion(ddiObject):
 	def __init__(self):
 		super().__init__()
 		self.TypeC : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 
 	def setTypeC(self, TypeC: str):
 		self.TypeC = TypeC
@@ -254,7 +254,7 @@ class Deity(ddiObject):
 	def __init__(self):
 		super().__init__()
 		self.Alignment : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 
 	def setAlignment(self, Alignment: str):
 		self.Alignment = Alignment
@@ -271,8 +271,8 @@ class Deity(ddiObject):
 class Disease(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Level : int = None
-		self.Teaser : int = None
+		self.Level : int = 0
+		self.Teaser : int = 0
 
 	def setLevel(self, Level: str):
 		self.Level = int(Level)
@@ -290,9 +290,9 @@ class EpicDestiny(ddiObject):
 	def __init__(self):
 		super().__init__()
 		self.Prerequisite : str = ''
-		self.IsNew : bool = None
-		self.IsChanged : bool = None
-		self.Teaser : int = None
+		self.IsNew : bool = False
+		self.IsChanged : bool = False
+		self.Teaser : int = 0
 
 	def setPrerequisite(self, Prerequisite: str):
 		self.Prerequisite = Prerequisite
@@ -321,11 +321,11 @@ class EpicDestiny(ddiObject):
 class Feat(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.IsNew : bool = None
-		self.IsChanged : bool = None
+		self.IsNew : bool = False
+		self.IsChanged : bool = False
 		self.Tier : str = ''
-		self.Sort : int = None
-		self.Teaser : int = None
+		self.Sort : int = 0
+		self.Teaser : int = 0
 		self.Prerequisite : str = ''
 
 	def setIsNew(self, IsNew: str):
@@ -369,7 +369,7 @@ class Glossary(ddiObject):
 		super().__init__()
 		self.Category : str = ''
 		self.TypeG : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 
 	def setCategory(self, Category: str):
 		self.Category = Category
@@ -396,12 +396,12 @@ class Item(ddiObject):
 		self.Level : str = ''
 		self.Category : str = ''
 		self.Enhancement : str = ''
-		self.IsMundane : bool = None
+		self.IsMundane : bool = False
 		self.FinalCost : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 		self.Rarity : str = ''
-		self.CostSort : int = None
-		self.LevelSort : int = None
+		self.CostSort : int = 0
+		self.LevelSort : int = 0
 
 	def setCost(self, Cost: str):
 		self.Cost = Cost
@@ -466,16 +466,16 @@ class Item(ddiObject):
 class Monster(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Level : int = None
+		self.Level : int = 0
 		self.Modifier : str = ''
 		self.Role : str = ''
-		self.IsNew : bool = None
-		self.IsChanged : bool = None
-		self.Teaser : int = None
-		self.XP : int = None
+		self.IsNew : bool = False
+		self.IsChanged : bool = False
+		self.Teaser : int = 0
+		self.XP : int = 0
 		self.Keywords : str = ''
 		self.Size : str = ''
-		self.IsPostMM3 : bool = None
+		self.IsPostMM3 : bool = False
 
 	def setLevel(self, Level: str):
 		self.Level = int(Level)
@@ -541,7 +541,7 @@ class ParagonPath(ddiObject):
 	def __init__(self):
 		super().__init__()
 		self.Prerequisite : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 
 	def setPrerequisite(self, Prerequisite: str):
 		self.Prerequisite = Prerequisite
@@ -558,9 +558,9 @@ class ParagonPath(ddiObject):
 class Poison(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Level : int = None
+		self.Level : int = 0
 		self.Cost : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 
 	def setLevel(self, Level: str):
 		self.Level = int(Level)
@@ -583,12 +583,12 @@ class Poison(ddiObject):
 class Power(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Level : int = None
+		self.Level : int = 0
 		self.Action : str = ''
-		self.IsNew : bool = None
-		self.IsChanged : bool = None
+		self.IsNew : bool = False
+		self.IsChanged : bool = False
 		self.Class : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 		self.Kind : str = ''
 		self.Usage : str = ''
 
@@ -645,9 +645,9 @@ class Race(ddiObject):
 		super().__init__()
 		self.Size : str = ''
 		self.Description : str = ''
-		self.IsNew : bool = None
-		self.IsChanged : bool = None
-		self.Teaser : int = None
+		self.IsNew : bool = False
+		self.IsChanged : bool = False
+		self.Teaser : int = 0
 
 	def setSize(self, Size: str):
 		self.Size = Size
@@ -682,11 +682,11 @@ class Race(ddiObject):
 class Ritual(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Level : int = None
+		self.Level : int = 0
 		self.Component : str = ''
-		self.Price : int = None
+		self.Price : int = 0
 		self.KeySkill : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 
 	def setLevel(self, Level: str):
 		self.Level = int(Level)
@@ -723,7 +723,7 @@ class Skill(ddiObject):
 		super().__init__()
 		self.Category : str = ''
 		self.TypeS : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 
 	def setCategory(self, Category: str):
 		self.Category = Category
@@ -747,7 +747,7 @@ class Terrain(ddiObject):
 	def __init__(self):
 		super().__init__()
 		self.TypeT : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 
 	def setTypeT(self, TypeT: str):
 		self.TypeT = TypeT
@@ -778,9 +778,9 @@ class Trap(ddiObject):
 		self.Role : str = ''
 		self.TypeT : str = ''
 		self.Level : str = ''
-		self.Teaser : int = None
+		self.Teaser : int = 0
 		self.Classe : str = ''
-		self.XP : int = None
+		self.XP : int = 0
 
 	def setRole(self, Role: str):
 		self.Role = Role

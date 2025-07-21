@@ -8,6 +8,7 @@ from .DynamicColumnFilter import Ui_DynamicColumnFilter
 from threading import Thread
 from queue import Queue
 from enum import IntEnum
+import typing
 
 import os
 import tempfile
@@ -188,8 +189,10 @@ class DDIParser:
 		elif preEnd1 != -1 and preEnd1 < preEnd2:
 			preEnd = preEnd1
 
-		if preEnd != -1:
+		if preStart != -1 and preEnd != -1:
 			return html[preStart+21:preEnd]
+		else:
+			return ''
 
 	def retriveSize(self, html: str) -> str:
 		preStart = html.find('<span class=\\"type\\">')
@@ -544,6 +547,53 @@ class PinableFilterProxy(QSortFilterProxyModel):
 
 		isRowPinned : bool = False
 		model : QAbstractItemModel = self.sourceModel()
+
+		try:
+			isRowPinned = model.data(model.index(source_row, 0), DDITableItemRole.Pinned)
+		except ValueError:
+			isRowPinned = False
+
+		return isRowPinned
+
+class PinableRangeOptInFilterProxy(QSortFilterProxyModel):
+	def __init__(self):
+		super().__init__()
+		self.FilteringRange : bool = False
+		self.min : int = 0
+		self.max : int = 0
+
+	def isRangeEnabled(self) -> bool:
+		return self.FilteringRange
+
+	@typing.overload
+	def enableRange(self, value:bool, minValue:int, maxValue:int) -> None: ...
+	@typing.overload
+	def enableRange(self, value:bool) -> None: ...
+
+	""" def enableRange(self, value:bool) -> None:
+		self.FilteringRange = value """
+
+	def enableRange(self, value:bool, /, minValue: int = -1, maxValue: int = -1) -> None:
+		self.FilteringRange = value
+		if minValue > -1 and maxValue > -1:
+			self.min = minValue
+			self.max = maxValue
+
+	def setFilteringRange(self, isFiltering) -> None:
+		self.FilteringRange = isFiltering
+
+	def filterAcceptsRow(self, source_row, source_parent):
+		model : QAbstractItemModel = None
+		if self.isRangeEnabled():
+			model = self.sourceModel()
+			value :int = int(model.data(model.index(source_row, self.filterKeyColumn()), Qt.ItemDataRole.DisplayRole))
+			if self.min <= value and value <= self.max:
+				return True
+		elif super().filterAcceptsRow(source_row, source_parent):
+			return True
+
+		isRowPinned : bool = False
+		model = self.sourceModel()
 
 		try:
 			isRowPinned = model.data(model.index(source_row, 0), DDITableItemRole.Pinned)
@@ -1038,17 +1088,14 @@ class DynamicPrimaryFilter(Ui_DynamicColumnFilter):
 		self.vSpacer1 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 		self.Templates : dict[str, typing.Callable] = {}
 		self.Templates.update({'' : self.removeCurrentTemplate})
-		self.ModelFilters : list[QSortFilterProxyModel] = []
+		self.ModelFilters : list[PinableRangeOptInFilterProxy] = []
 		self.model : QAbstractItemModel = None
-		self.mapper = QSignalMapper()
-		self.mapper.mappedInt.connect(self.filterModel)
 
 	def setModel(self, model:QAbstractItemModel):
 		self.model = model
 
 	def getModel(self) -> QAbstractItemModel:
 		if len(self.ModelFilters)-1 >= 0:
-			print("nera", len(self.ModelFilters)-1)
 			return self.ModelFilters[len(self.ModelFilters)-1]
 		else:
 			return self.model
@@ -1060,15 +1107,14 @@ class DynamicPrimaryFilter(Ui_DynamicColumnFilter):
 	def registerNewTemplate(self, templateName:str, boxesLabels:list[str], boxOptions:list[set | range]):
 		if len(self.ModelFilters) < len(boxesLabels):
 			for x in range(len(self.ModelFilters), len(self.ModelFilters) + len(boxesLabels) - len(self.ModelFilters)):
-				n = PinableFilterProxy()
+				n = PinableRangeOptInFilterProxy()
 				n.setObjectName(str(x))
-				print(x)
 				if x == 0:
 					n.setSourceModel(self.model)
 				else:
 					n.setSourceModel(self.ModelFilters[x-1])
 				self.ModelFilters.append(n)
-		self.Templates.update({templateName: lambda: self.createFiltersBoxesFromTemplate(boxesLabels, boxOptions)})
+		self.Templates.update({templateName: lambda Labels=boxesLabels, Options=boxOptions: self.createFiltersBoxesFromTemplate(Labels, Options)})
 
 	def changeTemplate(self, templateToCall:str):
 		for n in self.ModelFilters:
@@ -1104,66 +1150,74 @@ class DynamicPrimaryFilter(Ui_DynamicColumnFilter):
 
 		self.removeCurrentTemplate()
 
-		for index, box in enumerate(boxes):
-			self.ModelFilters[index].setFilterKeyColumn(index+2)
-			if isinstance(boxOptions[index], set):
+		for indexN, box in enumerate(boxes):
+			self.ModelFilters[indexN].setFilterKeyColumn(indexN+2)
+			if isinstance(boxOptions[indexN], set):
 				newLabel : QLabel = QLabel(self.scrollAreaContents)
 				newLabel.setText(box)
-				self.gL2.addWidget(newLabel, index, 0, 1, 1)
+				self.gL2.addWidget(newLabel, indexN, 0, 1, 1)
 
 				newComboBox : QComboBox = QComboBox(self.scrollAreaContents)
-				boxOptions[index].add('')
-				newComboBox.addItems(list(sorted(boxOptions[index])))
-				self.gL2.addWidget(newComboBox, index, 1, 1, 1)
-				newComboBox.currentIndexChanged.connect(self.mapper.map)
-				self.mapper.setMapping(newComboBox, index)
-				
+				boxOptions[indexN].add('')
+				newComboBox.addItems(list(sorted(boxOptions[indexN])))
+				self.gL2.addWidget(newComboBox, indexN, 1, 1, 1)
+				newComboBox.setObjectName(box+"_ComboBox")
+				newComboBox.currentIndexChanged.connect(lambda data, idx=indexN, cBox=newComboBox: self.filterModel(idx, cBox))
+
 				self.FilterItems.append(newComboBox)
 
 			else:
 				newRangeBox : QCheckBox = QCheckBox(box, self.scrollAreaContents)
-				self.gL2.addWidget(newRangeBox, index, 0, 1, 1)
+				self.gL2.addWidget(newRangeBox, indexN, 0, 1, 1)
 				self.CheckBoxes.append(newRangeBox)
 
 				newRangeLayout : QHBoxLayout = QHBoxLayout()
 
 				newRangeMin : QSpinBox = QSpinBox(self.scrollAreaContents)
-				newRangeMin.setMinimum(boxOptions[index].start)
-				newRangeMin.setMaximum(boxOptions[index].stop)
-				newRangeMin.setValue(boxOptions[index].start)
+				newRangeMin.setMinimum(boxOptions[indexN].start)
+				newRangeMin.setMaximum(boxOptions[indexN].stop)
+				newRangeMin.setValue(boxOptions[indexN].start)
 
 				newRangeMax : QSpinBox = QSpinBox(self.scrollAreaContents)
-				newRangeMax.setMinimum(boxOptions[index].start)
-				newRangeMax.setMaximum(boxOptions[index].stop)
-				newRangeMax.setValue(boxOptions[index].stop)
+				newRangeMax.setMinimum(boxOptions[indexN].start)
+				newRangeMax.setMaximum(boxOptions[indexN].stop)
+				newRangeMax.setValue(boxOptions[indexN].stop)
 
-				self.gL2.addItem(newRangeLayout, index, 1, 1, 1)
 				newRangeLayout.addWidget(newRangeMin)
 				newRangeLayout.addWidget(newRangeMax)
+				self.gL2.addItem(newRangeLayout, indexN, 1, 1, 1)
 
 				newRangeBox.setChecked(False)
 				newRangeMin.setDisabled(True)
 				newRangeMax.setDisabled(True)
-				newRangeBox.checkStateChanged.connect(lambda: self.disableRange(newRangeMin, newRangeMax))
-				
+				newRangeBox.checkStateChanged.connect(lambda data, idx=indexN, min=newRangeMin, max=newRangeMax: self.disableRange(data, idx, min, max))
 
+				newRangeMin.valueChanged.connect(lambda data, idx=indexN, min=newRangeMin, max=newRangeMax: self.filterRangeModel(idx, min, max))
+				newRangeMax.valueChanged.connect(lambda data, idx=indexN, min=newRangeMin, max=newRangeMax: self.filterRangeModel(idx, min, max))
+
+				newRangeMin.setVisible(True)
+				newRangeMax.setVisible(True)
 				self.FilterItems.append((newRangeMin, newRangeMax))
-			lastindex = index
+			lastindex = indexN
 
 		self.gL2.addItem(self.vSpacer1, lastindex+1, 0, 1, 2)
-		print(len(self.ModelFilters))
 		return
 
-	def disableRange(self, min:QSpinBox, max:QSpinBox) -> None:
-		if min.isEnabled():
-			min.setDisabled(True)
-			max.setDisabled(True)
-		else:
-			min.setDisabled(False)
-			max.setDisabled(False)
+	def filterRangeModel(self, index:int, min:QSpinBox, max:QSpinBox) -> None:
+		self.ModelFilters[index].enableRange(True, min.value(), max.value())
+		self.ModelFilters[index].setFilterRegularExpression('')
 
-	def filterModel(self, index):
-		self.ModelFilters[index].setFilterRegularExpression(str(self.FilterItems[index].currentText()))
+	def disableRange(self, state:Qt.CheckState, index:int, min:QSpinBox, max:QSpinBox) -> None:
+		max.setEnabled(not min.isEnabled())
+		min.setEnabled(not min.isEnabled())
+		if state is Qt.CheckState.Unchecked:
+			self.ModelFilters[index].enableRange(False)
+			self.ModelFilters[index].setFilterRegularExpression('')
+
+
+	def filterModel(self, index:int, cBox:QComboBox):
+		self.ModelFilters[index].setFilterRegularExpression(cBox.currentText())
+
 
 class CompendiumScreen(Ui_ScreenView):
 	def __init__(self):
@@ -1249,14 +1303,14 @@ class CompendiumScreen(Ui_ScreenView):
 
 		self.setupDDITable()
 
-		
-		
+
+
 		self.SourceFilter = self.createSourceFilterProxy(self.model)
 		self.preMM3Filter = self.createMM3FilterProxy(self.SourceFilter)
 		self.CategoryFilter = self.createCategoryFilterProxy(self.preMM3Filter)
 		self.SearchFilter = self.createSearchFilter(self.CategoryFilter)
 		self.pfTab.setModel(self.SearchFilter)
-		print(self.pfTab.getModel())
+
 		self.pfTab.registerNewTemplate("Backgrounds", ["Type", "Campaing Setting", "Prerequisite(s)", "Associated Skills"], self.templateSets["Backgrounds"])
 		self.pfTab.registerNewTemplate("Characters Themes", ["Prerequisite(s)"], self.templateSets["Characters Themes"])
 		self.pfTab.registerNewTemplate("Classes", ["Role", "Power Source", "Key Abilities"], self.templateSets["Classes"])
@@ -1275,21 +1329,14 @@ class CompendiumScreen(Ui_ScreenView):
 		self.pfTab.registerNewTemplate("Rituals", ["Level", "Component Cost", "Market Price", "Key Skill"], self.templateSets["Rituals"])
 		self.pfTab.registerNewTemplate("Terrains", ["Type"], self.templateSets["Terrains"])
 		self.pfTab.registerNewTemplate("Traps", ["Type", "Role", "Level", "XP", "Class"], self.templateSets["Traps"])
-		print(self.pfTab.getModel())
+
 		self.BookmarkFilter = self.createBookmarkFilter(self.pfTab.getModel())
 		self.SearchAll : bool = False
 		self.Bookmarks : bool = False
 
 		self.ddiTable.setModel(self.BookmarkFilter)
-		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.itemSelected())
+		self.ddiTable.selectionModel().selectionChanged.connect(self.itemSelected)
 		self.statusTest : QStatusBar = None
-
-		
-			
-			#self.pfTab.registerNewTemplate(cat, Categories.cat.fields[1:])
-		#print(self.templateSets["Backgrounds"])
-		self.pfTab.registerNewTemplate("Backgrounds", ['Type', 'Campaing Setting', 'Prerequisite(s)', 'Associated Skills'], self.templateSets["Backgrounds"])
-		#self.pfTab.registerNewTemplate(Categories.BACKGROUND.title, ['1', '2'], [range(1,5), set()])
 
 	def registerRowCounter(self, sBar:QStatusBar) -> None:
 		self.statusTest = sBar
@@ -1398,16 +1445,17 @@ class CompendiumScreen(Ui_ScreenView):
 
 	def createFilterBox(self) -> QComboBox:
 		newComboBox = QComboBox()
-		newComboBox.currentIndexChanged.connect(lambda: self.changeTable(newComboBox.itemData(newComboBox.currentIndex(), Qt.ItemDataRole.UserRole)))
 		for category in Categories:
 			newComboBox.addItem(category.title, category)
+		newComboBox.currentIndexChanged.connect(lambda data, cBox=newComboBox: self.changeTable(cBox))
+		self.changeTable(newComboBox)
 		return newComboBox
 
 	def createFilterLine(self) -> QLineEdit:
 		newLineEdit = QLineEdit()
 		newLineEdit.setMinimumSize(150,15)
 		newLineEdit.setMaximumSize(150,35)
-		newLineEdit.textEdited.connect(lambda: self.textChanged(newLineEdit.text()))
+		newLineEdit.textEdited.connect(lambda data: self.textChanged(data))
 		return newLineEdit
 
 	def createFilters(self) -> QPushButton:
@@ -1538,7 +1586,7 @@ class CompendiumScreen(Ui_ScreenView):
 		match ddiObject.getType():
 			case Types.ASSOCIATE:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeA()))
-				
+
 				self.templateSets["Companions & Familiars"][0].add(ddiObject.getTypeA())
 			case Types.BACKGROUND:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeB()))
@@ -1552,7 +1600,7 @@ class CompendiumScreen(Ui_ScreenView):
 					self.templateSets["Backgrounds"][2].add('')
 				else:
 					self.templateSets["Backgrounds"][2].add(ddiObject.getPrerequisite())
-				
+
 				for string in ddiObject.getSkills().split(', '):
 					self.templateSets["Backgrounds"][3].add(string)
 			case Types.CLASS:
@@ -1608,9 +1656,9 @@ class CompendiumScreen(Ui_ScreenView):
 				self.model.setItem(row, 5, QStandardItem(ddiObject.getCost()))
 				self.model.setItem(row, 6, QStandardItem(ddiObject.getRarity()))
 
-				
+
 				self.templateSets["Items"][0].add(ddiObject.getCategory())
-				
+
 				self.templateSets["Items"][4].add(ddiObject.getRarity())
 			case Types.MONSTER:
 				assert isinstance(ddiObject, Monster)
@@ -1624,7 +1672,7 @@ class CompendiumScreen(Ui_ScreenView):
 				self.model.setItem(row, 5, newItem3)
 				self.model.setItem(row, 6, QStandardItem(ddiObject.getSize()))
 				self.model.setItem(row, 7, QStandardItem(ddiObject.getKeywords()))
-				
+
 				self.templateSets["Creatures"][1].add(ddiObject.getRole())
 				self.templateSets["Creatures"][2].add(ddiObject.getModifier())
 				self.templateSets["Creatures"][4].add(ddiObject.getSize())
@@ -1672,7 +1720,7 @@ class CompendiumScreen(Ui_ScreenView):
 				self.templateSets["Terrains"][0].add(ddiObject.getTypeT())
 			case Types.THEME:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getPrerequisite()))
-				
+
 				self.templateSets["Characters Themes"][0].add(ddiObject.getPrerequisite())
 			case Types.TRAP:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeT()))
@@ -1717,7 +1765,8 @@ class CompendiumScreen(Ui_ScreenView):
 		self.SearchFilter.setFilterRegularExpression(text)
 		self.updateRowCount()
 
-	def changeTable(self, category: Categories) -> None:
+	def changeTable(self, cBox:QComboBox) -> None:
+		category = cBox.itemData(cBox.currentIndex(), Qt.ItemDataRole.UserRole)
 		if category is Categories.ALL:
 			self.CategoryFilter.setFilterRegularExpression('')
 			self.pfTab.changeTemplate("")
