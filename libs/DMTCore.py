@@ -3,6 +3,7 @@ from .DDIDataStructures import *
 from .SourceFilter import Ui_FilterTab
 from .ColumnFilter import Ui_ColumnFilter
 from .ExtraFilters import Ui_extraFilters
+from .DynamicColumnFilter import Ui_DynamicColumnFilter
 
 from threading import Thread
 from queue import Queue
@@ -17,16 +18,16 @@ import typing
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (QAbstractItemView, QAbstractScrollArea, QApplication, QFrame,
 	QGridLayout, QHBoxLayout, QHeaderView, QSizePolicy,
-	QTableWidget, QTableWidgetItem, QWidget, QItemDelegate, QMenu, QComboBox, QToolBar, QLineEdit, QPushButton, QTabWidget, QCheckBox)
+	QTableWidget, QTableWidgetItem, QWidget, QItemDelegate, QMenu, QComboBox, QToolBar, QLineEdit, QPushButton, QTabWidget, QCheckBox, QStatusBar, QLabel, QSpacerItem, QSpinBox)
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
 	QMetaObject, QObject, QPoint, QRect,
-	QSize, QTime, QUrl, Qt, QSortFilterProxyModel, QModelIndex, QItemSelectionModel, Qt, QByteArray, QRegularExpression, QAbstractItemModel)
+	QSize, QTime, QUrl, Qt, QSortFilterProxyModel, QModelIndex, QItemSelectionModel, Qt, QByteArray, QRegularExpression, QAbstractItemModel, QSignalMapper)
 from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 	QFont, QFontDatabase, QGradient, QIcon,
 	QImage, QKeySequence, QLinearGradient, QPainter,
 	QPalette, QPixmap, QRadialGradient, QTransform, QStandardItemModel, QStandardItem, QCloseEvent, QAction)
 
-__all__ = ["DDIParser", "DDITableItemRole", "PinableBookmarkbleFilterProxy", "Base64Icons", "HTMLRenderer", "CompendiumScreen"]
+__all__ = ["DDIParser", "DDITableItemRole", "PinableFilterProxy", "Base64Icons", "HTMLRenderer", "CompendiumScreen"]
 
 class Serializer:
 	def __init__(self, path:str='data/', SerializerName:str='Serializer'):
@@ -516,15 +517,34 @@ class DDITableItemRole(IntEnum):
 	Pinned = 34
 	Source = 35
 	IsPostMM3 = 36
+	Bookmarked = 37
 
-class PinableBookmarkbleFilterProxy(QSortFilterProxyModel):
+class BookmarkbleFilterProxy(QSortFilterProxyModel):
+	def __init__(self):
+		super().__init__()
+		self.IsFilterOn : bool = False
+
+	def flipIsFilterOn(self):
+		self.IsFilterOn = not self.IsFilterOn
+
+	def filterAcceptsRow(self, source_row, source_parent):
+		if not self.IsFilterOn:
+			return True
+
+		isRowBookmarked : bool = False
+		model : QAbstractItemModel = self.sourceModel()
+
+		isRowBookmarked = model.data(model.index(source_row, 0), DDITableItemRole.Bookmarked)
+		return isRowBookmarked
+
+class PinableFilterProxy(QSortFilterProxyModel):
 	def filterAcceptsRow(self, source_row, source_parent):
 		if super().filterAcceptsRow(source_row, source_parent):
 			return True
-		
+
 		isRowPinned : bool = False
 		model : QAbstractItemModel = self.sourceModel()
-		
+
 		try:
 			isRowPinned = model.data(model.index(source_row, 0), DDITableItemRole.Pinned)
 		except ValueError:
@@ -951,6 +971,200 @@ class DDISourceFilter(Ui_FilterTab):
 			source.setChecked(False)
 			source.blockSignals(False)
 
+class PrimaryFilter(Ui_ColumnFilter):
+	def __init__(self):
+		super().__init__()
+		self.filterOps : dict[str, set] = {
+			"Action": set(),
+			"Alignment": set(),
+			"Campaign": set(),
+			"Category": set(),
+			"Class": set(),
+			"Group Role": set(),
+			"Kind": set(),
+			"Power Source": set(),
+			"Rarity": set(),
+			"Role": set(),
+			"Size": set(),
+			"Tier": set(),
+			"Type": set(),
+			"Usage": set(),
+			"Mundane": set()
+		}
+
+		self.boxes : list[QComboBox] = []
+		self.Labels : list[str] = []
+		for st, s in self.filterOps.items():
+			s.add('')
+
+	def setupUi(self, ColumnFilter):
+		super().setupUi(ColumnFilter)
+
+		self.boxes.append(self.actionBox)
+		self.boxes.append(self.alignmentBox)
+		self.boxes.append(self.campaignBox)
+		self.boxes.append(self.caregotyBox)
+		self.boxes.append(self.classBox)
+		self.boxes.append(self.gRoleBox)
+		self.boxes.append(self.kindBox)
+		self.boxes.append(self.pSourceBox)
+		self.boxes.append(self.rarityBox)
+		self.boxes.append(self.roleBox)
+		self.boxes.append(self.sizeBox)
+		self.boxes.append(self.tierBox)
+		self.boxes.append(self.typeBox)
+		self.boxes.append(self.usageBox)
+		self.boxes.append(self.mundaneBox)
+
+		self.btnReset.clicked.connect(self.resetFilters)
+
+	def resetFilters(self) -> None:
+		for box in self.boxes:
+			box.setCurrentIndex(0)
+		pass
+
+	def addItemTo(self, filter:str, option:str) -> None:
+		self.filterOps[filter].add(option)
+
+	def renderComboBoxes(self) -> None:
+		for box, label in zip(self.boxes, self.filterOps):
+			box.addItems(list(sorted(self.filterOps[label])))
+
+class DynamicPrimaryFilter(Ui_DynamicColumnFilter):
+	def __init__(self):
+		super().__init__()
+		self.CheckBoxes : list[QCheckBox] = []
+		self.FilterItems : list[QComboBox | tuple[QSpinBox, QSpinBox]] = []
+		self.vSpacer1 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+		self.Templates : dict[str, typing.Callable] = {}
+		self.Templates.update({'' : self.removeCurrentTemplate})
+		self.ModelFilters : list[QSortFilterProxyModel] = []
+		self.model : QAbstractItemModel = None
+		self.mapper = QSignalMapper()
+		self.mapper.mappedInt.connect(self.filterModel)
+
+	def setModel(self, model:QAbstractItemModel):
+		self.model = model
+
+	def getModel(self) -> QAbstractItemModel:
+		if len(self.ModelFilters)-1 >= 0:
+			print("nera", len(self.ModelFilters)-1)
+			return self.ModelFilters[len(self.ModelFilters)-1]
+		else:
+			return self.model
+
+	def setupUi(self, DynamicColumnFilter):
+		super().setupUi(DynamicColumnFilter)
+		self.btnReset.clicked.connect(self.actionResetFilters)
+
+	def registerNewTemplate(self, templateName:str, boxesLabels:list[str], boxOptions:list[set | range]):
+		if len(self.ModelFilters) < len(boxesLabels):
+			for x in range(len(self.ModelFilters), len(self.ModelFilters) + len(boxesLabels) - len(self.ModelFilters)):
+				n = PinableFilterProxy()
+				n.setObjectName(str(x))
+				print(x)
+				if x == 0:
+					n.setSourceModel(self.model)
+				else:
+					n.setSourceModel(self.ModelFilters[x-1])
+				self.ModelFilters.append(n)
+		self.Templates.update({templateName: lambda: self.createFiltersBoxesFromTemplate(boxesLabels, boxOptions)})
+
+	def changeTemplate(self, templateToCall:str):
+		for n in self.ModelFilters:
+			n.setFilterRegularExpression('')
+		self.Templates[templateToCall]()
+
+	def actionResetFilters(self) -> None:
+		rangeIndex : int = 0
+		for item in self.FilterItems:
+			if isinstance(item, QComboBox):
+				item.setCurrentIndex(0)
+			elif isinstance(item, tuple):
+				self.CheckBoxes[rangeIndex].setChecked(False)
+				min, max = item
+				min.setValue(min.minimum())
+				max.setValue(max.maximum())
+				rangeIndex += 1
+
+	def removeCurrentTemplate(self) -> None:
+		for item in self.scrollAreaContents.children():
+			if isinstance(item, (QComboBox, QLabel, QSpinBox, QCheckBox)):
+				self.gL2.removeWidget(item)
+				item.deleteLater()
+			elif isinstance(item, QHBoxLayout):
+				self.gL2.removeItem(item)
+				item.deleteLater()
+		self.gL2.removeItem(self.vSpacer1)
+		self.CheckBoxes = []
+		self.FilterItems = []
+
+	def createFiltersBoxesFromTemplate(self, boxes:list[str], boxOptions:list[set | range]) -> list[QComboBox | tuple[QSpinBox]]:
+		lastindex : int = 0
+
+		self.removeCurrentTemplate()
+
+		for index, box in enumerate(boxes):
+			self.ModelFilters[index].setFilterKeyColumn(index+2)
+			if isinstance(boxOptions[index], set):
+				newLabel : QLabel = QLabel(self.scrollAreaContents)
+				newLabel.setText(box)
+				self.gL2.addWidget(newLabel, index, 0, 1, 1)
+
+				newComboBox : QComboBox = QComboBox(self.scrollAreaContents)
+				boxOptions[index].add('')
+				newComboBox.addItems(list(sorted(boxOptions[index])))
+				self.gL2.addWidget(newComboBox, index, 1, 1, 1)
+				newComboBox.currentIndexChanged.connect(self.mapper.map)
+				self.mapper.setMapping(newComboBox, index)
+				
+				self.FilterItems.append(newComboBox)
+
+			else:
+				newRangeBox : QCheckBox = QCheckBox(box, self.scrollAreaContents)
+				self.gL2.addWidget(newRangeBox, index, 0, 1, 1)
+				self.CheckBoxes.append(newRangeBox)
+
+				newRangeLayout : QHBoxLayout = QHBoxLayout()
+
+				newRangeMin : QSpinBox = QSpinBox(self.scrollAreaContents)
+				newRangeMin.setMinimum(boxOptions[index].start)
+				newRangeMin.setMaximum(boxOptions[index].stop)
+				newRangeMin.setValue(boxOptions[index].start)
+
+				newRangeMax : QSpinBox = QSpinBox(self.scrollAreaContents)
+				newRangeMax.setMinimum(boxOptions[index].start)
+				newRangeMax.setMaximum(boxOptions[index].stop)
+				newRangeMax.setValue(boxOptions[index].stop)
+
+				self.gL2.addItem(newRangeLayout, index, 1, 1, 1)
+				newRangeLayout.addWidget(newRangeMin)
+				newRangeLayout.addWidget(newRangeMax)
+
+				newRangeBox.setChecked(False)
+				newRangeMin.setDisabled(True)
+				newRangeMax.setDisabled(True)
+				newRangeBox.checkStateChanged.connect(lambda: self.disableRange(newRangeMin, newRangeMax))
+				
+
+				self.FilterItems.append((newRangeMin, newRangeMax))
+			lastindex = index
+
+		self.gL2.addItem(self.vSpacer1, lastindex+1, 0, 1, 2)
+		print(len(self.ModelFilters))
+		return
+
+	def disableRange(self, min:QSpinBox, max:QSpinBox) -> None:
+		if min.isEnabled():
+			min.setDisabled(True)
+			max.setDisabled(True)
+		else:
+			min.setDisabled(False)
+			max.setDisabled(False)
+
+	def filterModel(self, index):
+		self.ModelFilters[index].setFilterRegularExpression(str(self.FilterItems[index].currentText()))
+
 class CompendiumScreen(Ui_ScreenView):
 	def __init__(self):
 		super().__init__()
@@ -979,8 +1193,8 @@ class CompendiumScreen(Ui_ScreenView):
 		self.swap2 = self.Filters
 
 		newTab = self.addFilterTab('Primary Filters')
-		n = Ui_ColumnFilter()
-		self.pfTab = n.setupUi(newTab)
+		self.pfTab = DynamicPrimaryFilter()
+		self.pfTab.setupUi(newTab)
 
 		newTab = self.addFilterTab('Sourcebook Filters')
 		self.sfTab = self.createSourcebookFilterTab(newTab)
@@ -1007,34 +1221,105 @@ class CompendiumScreen(Ui_ScreenView):
 		]
 
 		self.model.setHorizontalHeaderLabels(columnsList)
+		self.set1 = set()
+		self.set2 = set()
+
+		self.templateSets : dict[str:list] = {
+			"Backgrounds": [set(), set(), set(), set()],
+			"Characters Themes": [set()],
+			"Classes": [set(), set(), set(["Strength", "Dexterity", "Constitutiton", "Wisdom", "Intelligence", "Charisma"])],
+			"Companions & Familiars": [set()],
+			"Creatures": [range(0,32), set(), set(), range(0,32), set(), set()],
+			"Deities": [set()],
+			"Diseases": [range(0,32)],
+			"Epic Destinies": [set()],
+			"Feats": [set(), set()],
+			"Glossary": [set(), set()],
+			"Items": [set(), set(), range(0,32), range(1, 3125000), set()],
+			"Paragon Paths": [set()],
+			"Poisons": [range(0,32), range(1, 3125000)],
+			"Powers": [range(0,32), set(), set(), set(), set()],
+			"Races": [set(), set()],
+			"Rituals": [range(0,32), range(0,0), range(0,0), set()],
+			"Terrains": [set()],
+			"Traps": [set(), set(), range(0,32), range(0,32), set()]
+		}
 
 		self.populateModel()
 
 		self.setupDDITable()
 
+		
+		
 		self.SourceFilter = self.createSourceFilterProxy(self.model)
 		self.preMM3Filter = self.createMM3FilterProxy(self.SourceFilter)
 		self.CategoryFilter = self.createCategoryFilterProxy(self.preMM3Filter)
 		self.SearchFilter = self.createSearchFilter(self.CategoryFilter)
+		self.pfTab.setModel(self.SearchFilter)
+		print(self.pfTab.getModel())
+		self.pfTab.registerNewTemplate("Backgrounds", ["Type", "Campaing Setting", "Prerequisite(s)", "Associated Skills"], self.templateSets["Backgrounds"])
+		self.pfTab.registerNewTemplate("Characters Themes", ["Prerequisite(s)"], self.templateSets["Characters Themes"])
+		self.pfTab.registerNewTemplate("Classes", ["Role", "Power Source", "Key Abilities"], self.templateSets["Classes"])
+		self.pfTab.registerNewTemplate("Companions & Familiars", ["Type"], self.templateSets["Companions & Familiars"])
+		self.pfTab.registerNewTemplate("Creatures", ["Level", "Main Role", "Group Role", "XP", "Size", "Keywords"], self.templateSets["Creatures"])
+		self.pfTab.registerNewTemplate("Deities", ["Alignment"], self.templateSets["Deities"])
+		self.pfTab.registerNewTemplate("Diseases", ["Level"], self.templateSets["Diseases"])
+		self.pfTab.registerNewTemplate("Epic Destinies", ["Prerequisite(s)"], self.templateSets["Epic Destinies"])
+		self.pfTab.registerNewTemplate("Feats", ["Tier", "Prerequisite(s)"], self.templateSets["Feats"])
+		self.pfTab.registerNewTemplate("Glossary", ["Category", "Type"], self.templateSets["Glossary"])
+		self.pfTab.registerNewTemplate("Items", ["Category", "Mundane", "Level", "Cost", "Rarity"], self.templateSets["Items"])
+		self.pfTab.registerNewTemplate("Paragon Paths", ["Prerequisite(s)"], self.templateSets["Paragon Paths"])
+		self.pfTab.registerNewTemplate("Poisons", ["Level", "Cost"], self.templateSets["Poisons"])
+		self.pfTab.registerNewTemplate("Powers", ["Level", "Action", "Class", "Kind", "Usage"], self.templateSets["Powers"])
+		self.pfTab.registerNewTemplate("Races", ["Ability Scores", "Size"], self.templateSets["Races"])
+		self.pfTab.registerNewTemplate("Rituals", ["Level", "Component Cost", "Market Price", "Key Skill"], self.templateSets["Rituals"])
+		self.pfTab.registerNewTemplate("Terrains", ["Type"], self.templateSets["Terrains"])
+		self.pfTab.registerNewTemplate("Traps", ["Type", "Role", "Level", "XP", "Class"], self.templateSets["Traps"])
+		print(self.pfTab.getModel())
+		self.BookmarkFilter = self.createBookmarkFilter(self.pfTab.getModel())
+		self.SearchAll : bool = False
+		self.Bookmarks : bool = False
 
-		self.ddiTable.setModel(self.SearchFilter)
+		self.ddiTable.setModel(self.BookmarkFilter)
 		self.ddiTable.selectionModel().selectionChanged.connect(lambda: self.itemSelected())
+		self.statusTest : QStatusBar = None
+
+		
+			
+			#self.pfTab.registerNewTemplate(cat, Categories.cat.fields[1:])
+		#print(self.templateSets["Backgrounds"])
+		self.pfTab.registerNewTemplate("Backgrounds", ['Type', 'Campaing Setting', 'Prerequisite(s)', 'Associated Skills'], self.templateSets["Backgrounds"])
+		#self.pfTab.registerNewTemplate(Categories.BACKGROUND.title, ['1', '2'], [range(1,5), set()])
+
+	def registerRowCounter(self, sBar:QStatusBar) -> None:
+		self.statusTest = sBar
+
+	def updateRowCount(self) -> str:
+		self.statusTest.showMessage(str(self.ddiTable.model().rowCount()))
 
 	def filterPreMM3Monsters(self, cBox:QCheckBox):
 		if cBox.isChecked():
 			self.preMM3Filter.setFilterRegularExpression('')
 		else:
 			self.preMM3Filter.setFilterRegularExpression('Y')
+		self.updateRowCount()
 
-	def createMM3FilterProxy(self, model:QAbstractItemModel) -> PinableBookmarkbleFilterProxy:
-		sFilter = PinableBookmarkbleFilterProxy()
+	def createBookmarkFilter(self, model:QAbstractItemModel) -> BookmarkbleFilterProxy:
+		sFilter = BookmarkbleFilterProxy()
+		sFilter.setFilterKeyColumn(0)
+		sFilter.setFilterRole(DDITableItemRole.Bookmarked)
+		sFilter.setSourceModel(model)
+		return sFilter
+
+	def createMM3FilterProxy(self, model:QAbstractItemModel) -> PinableFilterProxy:
+		sFilter = PinableFilterProxy()
 		sFilter.setFilterKeyColumn(0)
 		sFilter.setFilterRole(DDITableItemRole.IsPostMM3)
 		sFilter.setSourceModel(model)
 		return sFilter
 
-	def createSearchFilter(self, model:QAbstractItemModel) -> PinableBookmarkbleFilterProxy:
-		sFilter = PinableBookmarkbleFilterProxy()
+	def createSearchFilter(self, model:QAbstractItemModel) -> PinableFilterProxy:
+		sFilter = PinableFilterProxy()
 		sFilter.setSourceModel(model)
 		sFilter.setFilterKeyColumn(1)
 		sFilter.setFilterRole(0)
@@ -1050,8 +1335,8 @@ class CompendiumScreen(Ui_ScreenView):
 			checkBox.checkStateChanged.connect(lambda state, x=checkBox: self.sourceFilterChanged(x))
 		return sfTab
 
-	def createCategoryFilterProxy(self, model:QAbstractItemModel) -> PinableBookmarkbleFilterProxy:
-		sFilter = PinableBookmarkbleFilterProxy()
+	def createCategoryFilterProxy(self, model:QAbstractItemModel) -> PinableFilterProxy:
+		sFilter = PinableFilterProxy()
 		sFilter.setFilterKeyColumn(0)
 		sFilter.setFilterRole(DDITableItemRole.Category)
 		sFilter.setSourceModel(model)
@@ -1130,6 +1415,28 @@ class CompendiumScreen(Ui_ScreenView):
 		newButton.clicked.connect(self.changeView)
 		return newButton
 
+	def createSearchAllCheck(self) -> QCheckBox:
+		newAllBox = QCheckBox('All')
+		newAllBox.checkStateChanged.connect(self.changeSearchAll)
+		return newAllBox
+
+	def changeSearchAll(self):
+		self.SearchAll = not self.SearchAll
+		if self.SearchAll:
+			self.SearchFilter.setFilterKeyColumn(-1)
+		else:
+			self.SearchFilter.setFilterKeyColumn(1)
+
+	def createBookmarkButton(self) -> QPushButton:
+		newButton = QPushButton('Bookmarks')
+		newButton.clicked.connect(self.searchBookmarks)
+		return newButton
+
+	def searchBookmarks(self):
+		self.BookmarkFilter.flipIsFilterOn()
+		self.BookmarkFilter.setFilterRegularExpression('')
+		self.updateRowCount()
+
 	def changeView(self):
 		self.gL_2.replaceWidget(self.swap1, self.swap2)
 		self.webViewer.setVisible(not self.webViewer.isVisible())
@@ -1163,10 +1470,10 @@ class CompendiumScreen(Ui_ScreenView):
 		cMenu.addSeparator()
 
 		action5 = cMenu.addAction("Bookmark")
-		action5.triggered.connect(self.actionBookmark)
+		action5.triggered.connect(lambda: self.actionBookmark(index))
 
 		action6 = cMenu.addAction("Remove Bookmark")
-		action6.triggered.connect(self.actionRemoveBookmark)
+		action6.triggered.connect(lambda: self.actionRemoveBookmark(index))
 
 		return cMenu
 
@@ -1197,11 +1504,11 @@ class CompendiumScreen(Ui_ScreenView):
 		self.ddiTable.model().setData(index, None, 1)
 		self.ddiTable.model().setData(index, False, DDITableItemRole.Pinned)
 
-	def actionBookmark(self) -> None:
-		pass
+	def actionBookmark(self, index: QModelIndex) -> None:
+		self.ddiTable.model().setData(index, True, DDITableItemRole.Bookmarked)
 
-	def actionRemoveBookmark(self) -> None:
-		pass
+	def actionRemoveBookmark(self, index: QModelIndex) -> None:
+		self.ddiTable.model().setData(index, False, DDITableItemRole.Bookmarked)
 
 	def on_context_menu(self, position: QPoint):
 		index = self.ddiTable.indexAt(position)
@@ -1216,11 +1523,12 @@ class CompendiumScreen(Ui_ScreenView):
 		newRow.setData(ddiObject, DDITableItemRole.Data)
 		newRow.setData(ddiObject.getType().category.title, DDITableItemRole.Category)
 		newRow.setData(False, DDITableItemRole.Pinned)
+		newRow.setData(False, DDITableItemRole.Bookmarked)
 		newRow.setData(ddiObject.getSource(), DDITableItemRole.Source)
 		newRow.setData('Y', DDITableItemRole.IsPostMM3)
 		if isinstance(ddiObject, Monster) and not ddiObject.getIsPostMM3():
 			newRow.setData('N', DDITableItemRole.IsPostMM3)
-			
+
 		self.model.appendRow(newRow)
 
 	def populateRow(self, row: int, ddiObject: ddiObject) -> None:
@@ -1230,38 +1538,68 @@ class CompendiumScreen(Ui_ScreenView):
 		match ddiObject.getType():
 			case Types.ASSOCIATE:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeA()))
+				
+				self.templateSets["Companions & Familiars"][0].add(ddiObject.getTypeA())
 			case Types.BACKGROUND:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeB()))
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getCampaign()))
 				self.model.setItem(row, 4, QStandardItem(ddiObject.getPrerequisite()))
 				self.model.setItem(row, 5, QStandardItem(ddiObject.getSkills()))
+
+				self.templateSets["Backgrounds"][0].add(ddiObject.getTypeB())
+				self.templateSets["Backgrounds"][1].add(ddiObject.getCampaign())
+				if ddiObject.getPrerequisite() == None:
+					self.templateSets["Backgrounds"][2].add('')
+				else:
+					self.templateSets["Backgrounds"][2].add(ddiObject.getPrerequisite())
+				
+				for string in ddiObject.getSkills().split(', '):
+					self.templateSets["Backgrounds"][3].add(string)
 			case Types.CLASS:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getRole()))
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getPower()))
 				self.model.setItem(row, 4, QStandardItem(ddiObject.getAbilities()))
+
+				self.templateSets["Classes"][0].add(ddiObject.getRole())
+				self.templateSets["Classes"][1].add(ddiObject.getPower())
+				#self.templateSets["Classes"][2].add(ddiObject.getAbilities())
 			case Types.COMPANION:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeC()))
+
+				self.templateSets["Companions & Familiars"][0].add(ddiObject.getTypeC())
 			case Types.DEITY:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getAlignment()))
+
+				self.templateSets["Deities"][0].add(ddiObject.getAlignment())
 			case Types.DISEASE:
 				newItem2 = QStandardItem()
 				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
 				self.model.setItem(row, 2, newItem2)
 			case Types.EPICDESTINY:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getPrerequisite()))
+
+				self.templateSets["Epic Destinies"][0].add(ddiObject.getPrerequisite())
 			case Types.FEAT:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTier()))
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getPrerequisite()))
+
+				self.templateSets["Feats"][0].add(ddiObject.getTier())
+				self.templateSets["Feats"][1].add(ddiObject.getPrerequisite())
 			case Types.GLOSSARY:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeG()))
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getCategory()))
+
+				self.templateSets["Glossary"][0].add(ddiObject.getTypeG())
+				self.templateSets["Glossary"][1].add(ddiObject.getCategory())
 			case Types.ITEM:
 				newItem2 = QStandardItem()
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getCategory()))
 				if ddiObject.getIsMundane():
 					self.model.setItem(row, 3, QStandardItem("Yes"))
+					self.templateSets["Items"][1].add("Yes")
 				else:
 					self.model.setItem(row, 3, QStandardItem("No"))
+					self.templateSets["Items"][1].add("No")
 				if ddiObject.getLevel().isnumeric():
 					newItem2.setData(int(ddiObject.getLevel()), Qt.ItemDataRole.DisplayRole)
 				else:
@@ -1269,19 +1607,31 @@ class CompendiumScreen(Ui_ScreenView):
 				self.model.setItem(row, 4, newItem2)
 				self.model.setItem(row, 5, QStandardItem(ddiObject.getCost()))
 				self.model.setItem(row, 6, QStandardItem(ddiObject.getRarity()))
+
+				
+				self.templateSets["Items"][0].add(ddiObject.getCategory())
+				
+				self.templateSets["Items"][4].add(ddiObject.getRarity())
 			case Types.MONSTER:
+				assert isinstance(ddiObject, Monster)
 				newItem2 = QStandardItem()
 				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
 				self.model.setItem(row, 2, newItem2)
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getModifier()))
-				self.model.setItem(row, 4, QStandardItem(ddiObject.getRole()))
+				self.model.setItem(row, 3, QStandardItem(ddiObject.getRole()))
+				self.model.setItem(row, 4, QStandardItem(ddiObject.getModifier()))
 				newItem3 = QStandardItem()
 				newItem3.setData(ddiObject.getXP(), Qt.ItemDataRole.DisplayRole)
 				self.model.setItem(row, 5, newItem3)
 				self.model.setItem(row, 6, QStandardItem(ddiObject.getSize()))
 				self.model.setItem(row, 7, QStandardItem(ddiObject.getKeywords()))
+				
+				self.templateSets["Creatures"][1].add(ddiObject.getRole())
+				self.templateSets["Creatures"][2].add(ddiObject.getModifier())
+				self.templateSets["Creatures"][4].add(ddiObject.getSize())
 			case Types.PARAGONPATH:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getPrerequisite()))
+
+				self.templateSets["Paragon Paths"][0].add(ddiObject.getPrerequisite())
 			case Types.POISON:
 				newItem2 = QStandardItem()
 				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
@@ -1292,12 +1642,22 @@ class CompendiumScreen(Ui_ScreenView):
 				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
 				self.model.setItem(row, 2, newItem2)
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getAction()))
+				self.set1.add(ddiObject.getAction())
 				self.model.setItem(row, 4, QStandardItem(ddiObject.getClass()))
+				self.set2.add(ddiObject.getClass())
 				self.model.setItem(row, 5, QStandardItem(ddiObject.getKind()))
 				self.model.setItem(row, 6, QStandardItem(ddiObject.getUsage()))
+
+				self.templateSets["Powers"][1].add(ddiObject.getAction())
+				self.templateSets["Powers"][2].add(ddiObject.getClass())
+				self.templateSets["Powers"][3].add(ddiObject.getKind())
+				self.templateSets["Powers"][4].add(ddiObject.getUsage())
 			case Types.RACE:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getDescription()))
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getSize()))
+
+				self.templateSets["Races"][0].add(ddiObject.getDescription())
+				self.templateSets["Races"][1].add(ddiObject.getSize())
 			case Types.RITUAL:
 				newItem2 = QStandardItem()
 				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
@@ -1307,13 +1667,13 @@ class CompendiumScreen(Ui_ScreenView):
 				newItem3.setData(ddiObject.getPrice(), Qt.ItemDataRole.DisplayRole)
 				self.model.setItem(row, 4, newItem3)
 				self.model.setItem(row, 5, QStandardItem(ddiObject.getKeySkill()))
-			case Types.GLOSSARY:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeS()))
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getCategory()))
 			case Types.TERRAIN:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeT()))
+				self.templateSets["Terrains"][0].add(ddiObject.getTypeT())
 			case Types.THEME:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getPrerequisite()))
+				
+				self.templateSets["Characters Themes"][0].add(ddiObject.getPrerequisite())
 			case Types.TRAP:
 				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeT()))
 				self.model.setItem(row, 3, QStandardItem(ddiObject.getRole()))
@@ -1331,6 +1691,10 @@ class CompendiumScreen(Ui_ScreenView):
 				else:
 					self.model.setItem(row, 5, QStandardItem("*"))
 				self.model.setItem(row, 6, QStandardItem(ddiObject.getClasse()))
+
+				self.templateSets["Traps"][0].add(ddiObject.getTypeT())
+				self.templateSets["Traps"][1].add(ddiObject.getRole())
+				self.templateSets["Traps"][4].add(ddiObject.getClasse())
 
 		self.model.setItem(row, 8, QStandardItem(ddiObject.getSource()))
 
@@ -1351,12 +1715,15 @@ class CompendiumScreen(Ui_ScreenView):
 
 	def textChanged(self, text: str) -> None:
 		self.SearchFilter.setFilterRegularExpression(text)
+		self.updateRowCount()
 
 	def changeTable(self, category: Categories) -> None:
 		if category is Categories.ALL:
 			self.CategoryFilter.setFilterRegularExpression('')
+			self.pfTab.changeTemplate("")
 		else:
 			self.CategoryFilter.setFilterRegularExpression(category.title)
+			self.pfTab.changeTemplate(category.title)
 
 		for headerItem in range(self.model.columnCount()):
 			self.ddiTable.hideColumn(headerItem)
@@ -1379,7 +1746,9 @@ class CompendiumScreen(Ui_ScreenView):
 		idealSize = self.ddiTable.horizontalHeader().sectionSize(0)
 		self.ddiTable.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
 		self.ddiTable.horizontalHeader().resizeSection(0, idealSize)
+		self.updateRowCount()
 
 	def sourceFilterChanged(self, cb:DataQCheckBox):
 		self.SourceFilter.flipSource(cb.data)
 		self.SourceFilter.setFilterRegularExpression('')
+		self.updateRowCount()

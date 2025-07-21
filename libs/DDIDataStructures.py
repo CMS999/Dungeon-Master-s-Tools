@@ -10,8 +10,8 @@ class CategoryData:
 
 class Categories(CategoryData, Enum):
 	ALL = "All", ["", "Name", "Source"]
-	BACKGROUND = "Background", ["", "Name", "Type", "Campaing Setting", "Prerequisite(s)", "Associated Skills"]
-	CHARACTERSTHEME = "Characters Theme", ["", "Name", "Prerequisite(s)"]
+	BACKGROUND = "Backgrounds", ["", "Name", "Type", "Campaing Setting", "Prerequisite(s)", "Associated Skills"]
+	CHARACTERSTHEME = "Characters Themes", ["", "Name", "Prerequisite(s)"]
 	CLASSES = "Classes", ["", "Name", "Role", "Power Source", "Key Abilities"]
 	COMPANIONSFAMILIARS = "Companions & Familiars", ["", "Name", "Type"]
 	CREATURES = "Creatures", ["", "Name", "Level", "Main Role", "Group Role", "XP", "Size", "Keywords"]
@@ -26,8 +26,8 @@ class Categories(CategoryData, Enum):
 	POWERS = "Powers", ["", "Name", "Level", "Action", "Class", "Kind", "Usage"]
 	RACES = "Races", ["", "Name", "Ability Scores", "Size"]
 	RITUALS = "Rituals", ["", "Name", "Level", "Component Cost", "Market Price", "Key Skill"]
-	TERRAIN = "Terrain", ["", "Name", "Type"]
-	TRAP = "Trap", ["", "Name", "Type", "Role", "Level", "XP", "Class"]
+	TERRAIN = "Terrains", ["", "Name", "Type"]
+	TRAP = "Traps", ["", "Name", "Type", "Role", "Level", "XP", "Class"]
 
 @dataclass
 class TypesData:
@@ -86,11 +86,11 @@ class Files(FilesData, Enum):
 
 class ddiObject():
 	def __init__(self):
-		self.color : str = '#ffffff'
+		self.color : str = ''
 		self.ID : int = -1
-		self.Name : str = None
-		self.Source : str = None
-		self.HTML : str = None
+		self.Name : str = ''
+		self.Source : str = ''
+		self.HTML : str = ''
 		self.type : Types = None
 
 	def setColor(self, color: str):
@@ -132,7 +132,7 @@ class ddiObject():
 class Associate(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.TypeA : str = None
+		self.TypeA : str = ''
 		self.Teaser : int = None
 
 	def setTypeA(self, Type: str):
@@ -150,11 +150,11 @@ class Associate(ddiObject):
 class Background(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.TypeB : str = None
-		self.Campaign : str = None
-		self.Skills : str = None
+		self.TypeB : str = ''
+		self.Campaign : str = ''
+		self.Skills : str = ''
 		self.Teaser : int = None
-		self.prerequisite : str = None
+		self.prerequisite : str = ''
 
 	def setTypeB(self, TypeB: str):
 		self.TypeB = TypeB
@@ -189,9 +189,9 @@ class Background(ddiObject):
 class Classe(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Power : str = None
-		self.Role : str = None
-		self.Abilities : str = None
+		self.Power : str = ''
+		self.Role : str = ''
+		self.Abilities : str = ''
 		self.IsNew : bool = None
 		self.IsChanged : bool = None
 		self.Teaser : int = None
@@ -235,7 +235,7 @@ class Classe(ddiObject):
 class Companion(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.TypeC : str = None
+		self.TypeC : str = ''
 		self.Teaser : int = None
 
 	def setTypeC(self, TypeC: str):
@@ -253,7 +253,7 @@ class Companion(ddiObject):
 class Deity(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Alignment : str = None
+		self.Alignment : str = ''
 		self.Teaser : int = None
 
 	def setAlignment(self, Alignment: str):
@@ -289,7 +289,7 @@ class Disease(ddiObject):
 class EpicDestiny(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Prerequisite : str = None
+		self.Prerequisite : str = ''
 		self.IsNew : bool = None
 		self.IsChanged : bool = None
 		self.Teaser : int = None
@@ -323,10 +323,10 @@ class Feat(ddiObject):
 		super().__init__()
 		self.IsNew : bool = None
 		self.IsChanged : bool = None
-		self.Tier : str = None
+		self.Tier : str = ''
 		self.Sort : int = None
 		self.Teaser : int = None
-		self.Prerequisite : str = None
+		self.Prerequisite : str = ''
 
 	def setIsNew(self, IsNew: str):
 		self.IsNew = bool(int(IsNew))
@@ -367,8 +367,8 @@ class Feat(ddiObject):
 class Glossary(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Category : str = None
-		self.TypeG : str = None
+		self.Category : str = ''
+		self.TypeG : str = ''
 		self.Teaser : int = None
 
 	def setCategory(self, Category: str):
@@ -392,14 +392,14 @@ class Glossary(ddiObject):
 class Item(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Cost : str = None
-		self.Level : str = None
-		self.Category : str = None
-		self.Enhancement : str = None
+		self.Cost : str = ''
+		self.Level : str = ''
+		self.Category : str = ''
+		self.Enhancement : str = ''
 		self.IsMundane : bool = None
-		self.FinalCost : str = None
+		self.FinalCost : str = ''
 		self.Teaser : int = None
-		self.Rarity : str = None
+		self.Rarity : str = ''
 		self.CostSort : int = None
 		self.LevelSort : int = None
 
@@ -467,14 +467,14 @@ class Monster(ddiObject):
 	def __init__(self):
 		super().__init__()
 		self.Level : int = None
-		self.Modifier : str = None
-		self.Role : str = None
+		self.Modifier : str = ''
+		self.Role : str = ''
 		self.IsNew : bool = None
 		self.IsChanged : bool = None
 		self.Teaser : int = None
 		self.XP : int = None
-		self.Keywords : str = None
-		self.Size : str = None
+		self.Keywords : str = ''
+		self.Size : str = ''
 		self.IsPostMM3 : bool = None
 
 	def setLevel(self, Level: str):
@@ -540,7 +540,7 @@ class Monster(ddiObject):
 class ParagonPath(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Prerequisite : str = None
+		self.Prerequisite : str = ''
 		self.Teaser : int = None
 
 	def setPrerequisite(self, Prerequisite: str):
@@ -559,7 +559,7 @@ class Poison(ddiObject):
 	def __init__(self):
 		super().__init__()
 		self.Level : int = None
-		self.Cost : str = None
+		self.Cost : str = ''
 		self.Teaser : int = None
 
 	def setLevel(self, Level: str):
@@ -584,13 +584,13 @@ class Power(ddiObject):
 	def __init__(self):
 		super().__init__()
 		self.Level : int = None
-		self.Action : str = None
+		self.Action : str = ''
 		self.IsNew : bool = None
 		self.IsChanged : bool = None
-		self.Class : str = None
+		self.Class : str = ''
 		self.Teaser : int = None
-		self.Kind : str = None
-		self.Usage : str = None
+		self.Kind : str = ''
+		self.Usage : str = ''
 
 	def getLevel(self) -> int:
 		return self.Level
@@ -643,8 +643,8 @@ class Power(ddiObject):
 class Race(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Size : str = None
-		self.Description : str = None
+		self.Size : str = ''
+		self.Description : str = ''
 		self.IsNew : bool = None
 		self.IsChanged : bool = None
 		self.Teaser : int = None
@@ -683,9 +683,9 @@ class Ritual(ddiObject):
 	def __init__(self):
 		super().__init__()
 		self.Level : int = None
-		self.Component : str = None
+		self.Component : str = ''
 		self.Price : int = None
-		self.KeySkill : str = None
+		self.KeySkill : str = ''
 		self.Teaser : int = None
 
 	def setLevel(self, Level: str):
@@ -721,8 +721,8 @@ class Ritual(ddiObject):
 class Skill(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Category : str = None
-		self.TypeS : str = None
+		self.Category : str = ''
+		self.TypeS : str = ''
 		self.Teaser : int = None
 
 	def setCategory(self, Category: str):
@@ -746,7 +746,7 @@ class Skill(ddiObject):
 class Terrain(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.TypeT : str = None
+		self.TypeT : str = ''
 		self.Teaser : int = None
 
 	def setTypeT(self, TypeT: str):
@@ -764,7 +764,7 @@ class Terrain(ddiObject):
 class Theme(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Prerequisite : str = None
+		self.Prerequisite : str = ''
 
 	def setPrerequisite(self, Prerequisite: str):
 		self.Prerequisite = Prerequisite
@@ -775,11 +775,11 @@ class Theme(ddiObject):
 class Trap(ddiObject):
 	def __init__(self):
 		super().__init__()
-		self.Role : str = None
-		self.TypeT : str = None
-		self.Level : str = None
+		self.Role : str = ''
+		self.TypeT : str = ''
+		self.Level : str = ''
 		self.Teaser : int = None
-		self.Classe : str = None
+		self.Classe : str = ''
 		self.XP : int = None
 
 	def setRole(self, Role: str):

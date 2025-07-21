@@ -21,14 +21,18 @@ class MainWindow(QMainWindow):
 		self.Compendium.setupUi(self.createTab('Compendium'))
 		self.ui.Tabs.currentChanged.connect(self.currentToolBar)
 		self.createToolBar('Compendium')
+		self.Compendium.registerRowCounter(self.statusBar())
 		if len(self.toolList) > 0:
 			self.toolList[0].setStyleSheet(''' QToolBar::separator{width: 20px} ''')
 			self.toolList[0].addWidget(self.Compendium.createFilterBox())
 			self.toolList[0].addSeparator()
 			self.toolList[0].addWidget(self.Compendium.createFilterLine())
 			self.toolList[0].addSeparator()
+			self.toolList[0].addWidget(self.Compendium.createSearchAllCheck())
+			self.toolList[0].addSeparator()
+			self.toolList[0].addWidget(self.Compendium.createBookmarkButton())
+			self.toolList[0].addSeparator()
 			self.toolList[0].addWidget(self.Compendium.createFilters())
-
 		if not os.path.isdir('Modules'):
 			os.makedirs("Modules")
 		self.PluginManager = PluginManager()
