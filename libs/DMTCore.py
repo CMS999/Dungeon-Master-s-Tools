@@ -168,14 +168,53 @@ class DDIParser:
 		return html
 
 	def processString(self, string: str) -> str:
+		if string == '':
+			return 'None'
+
 		for regex in self.stripHTML:
 			string = string.replace(regex, "")
+		if string.isspace():
+			string = 'None'
 		return string
+
+	def processException(self, html:str) -> str:
+		strings = html.replace(', ', ';;').replace(',', ';;').replace(' or ', ';;').split(';;')
+		for index, string in enumerate(strings):
+			if 'skill' in string.lower():
+				html = html.replace(string, 'Other')
+		return html
+
+	def retriveKind(self, html: str) -> str:
+		preStart = html.find('<span class="level">')
+		preEnd = -1
+		if preStart != -1:
+			preEnd = html.find("</span>")
+
+		kind : str
+
+		if preStart != -1 and preEnd != -1:
+			kind : str = html[preStart+20:preEnd]
+			if 'Attack' in kind:
+				kind = 'Attack'
+			elif 'Utility' in kind:
+				kind = 'Utility'
+			elif 'Feature' in kind:
+				kind = 'Feature'
+			elif 'Pact Boon' in kind:
+				kind = 'Pact Boon'
+			elif 'Racial' in kind:
+				kind = 'Racial'
+			else:
+				kind = ''
+
+		return kind
 
 	def retrivePrerequisite(self, html: str) -> str:
 		preStart = html.find("<b>Prerequisite: </b>")
 		preEnd1 = -1
 		preEnd2 = -1
+		if preStart == -1:
+			preStart = html.find("<b>Prerequisite</b>: ")
 		if preStart != -1:
 			preEnd1 = html.find("</p>", preStart)
 
@@ -192,7 +231,7 @@ class DDIParser:
 		if preStart != -1 and preEnd != -1:
 			return html[preStart+21:preEnd]
 		else:
-			return ''
+			return 'None'
 
 	def retriveSize(self, html: str) -> str:
 		preStart = html.find('<span class=\\"type\\">')
@@ -229,11 +268,11 @@ class DDIParser:
 		b.setName(self.processString(tokens[1]))
 		b.setTypeB(self.processString(tokens[2]))
 		b.setCampaign(self.processString(tokens[3]))
-		b.setSkills(self.processString(tokens[4]))
+		b.setSkills(self.processException(self.processString(tokens[4])))
 		b.setSource(self.processString(tokens[5]))
 		b.setTeaser(tokens[6])
 		b.setHTML(self.processHTML(tokens[7]))
-		b.setPrerequisite(self.retrivePrerequisite(tokens[7]))
+		b.setPrerequisite(self.processException(self.retrivePrerequisite(tokens[7])))
 		b.setType(type)
 		return b
 
@@ -270,7 +309,12 @@ class DDIParser:
 		d.setColor("#1d3d5e")
 		d.setID(tokens[0])
 		d.setName(self.processString(tokens[1]))
-		d.setAlignment(self.processString(tokens[2]))
+		if tokens[2] == 'Evil':
+			d.setAlignment('True Evil')
+		elif tokens[2] == 'Good':
+			d.setAlignment('True Good')
+		else:
+			d.setAlignment(self.processString(tokens[2]))
 		d.setSource(self.processString(tokens[3]))
 		d.setTeaser(tokens[4])
 		d.setHTML(self.processHTML(tokens[5]))
@@ -324,8 +368,14 @@ class DDIParser:
 		g.setColor("#1d3d5e")
 		g.setID(tokens[0])
 		g.setName(self.processString(tokens[1]))
-		g.setCategory(self.processString(tokens[2]))
-		g.setTypeG(self.processString(tokens[3]))
+		if tokens[2] != '':
+			g.setCategory(self.processString(tokens[2]))
+		else:
+			g.setCategory(self.processString('Skill'))
+		if tokens[3] != '':
+			g.setTypeG(self.processString(tokens[3]))
+		else:
+			g.setTypeG(self.processString('Rules'))
 		g.setSource(self.processString(tokens[4]))
 		g.setTeaser(tokens[5])
 		g.setHTML(self.processHTML(tokens[6]))
@@ -364,7 +414,7 @@ class DDIParser:
 		m.setID(tokens[0])
 		m.setName(self.processString(tokens[1]))
 		m.setLevel(tokens[2])
-		m.setModifier(self.processString(tokens[3]))
+		m.setModifier(self.processString(tokens[3]).title())
 		m.setRole(self.processString(tokens[4]))
 		m.setIsNew(tokens[5])
 		m.setIsChanged(tokens[6])
@@ -424,7 +474,11 @@ class DDIParser:
 		p.setClass(self.processString(tokens[7]))
 		p.setTeaser(tokens[8])
 		p.setHTML(self.processHTML(tokens[9]))
-		p.setKind(self.processString(tokens[10]))
+		kind = self.retriveKind(self.processHTML(tokens[9]))
+		if kind == '':
+			p.setKind(self.processString(tokens[10]))
+		else:
+			p.setKind(self.processString(kind))
 		p.setUsage(self.processString(tokens[11]))
 		p.setType(type)
 		return p
@@ -521,6 +575,7 @@ class DDITableItemRole(IntEnum):
 	Source = 35
 	IsPostMM3 = 36
 	Bookmarked = 37
+	test = 38
 
 class BookmarkbleFilterProxy(QSortFilterProxyModel):
 	def __init__(self):
@@ -570,9 +625,6 @@ class PinableRangeOptInFilterProxy(QSortFilterProxyModel):
 	@typing.overload
 	def enableRange(self, value:bool) -> None: ...
 
-	""" def enableRange(self, value:bool) -> None:
-		self.FilteringRange = value """
-
 	def enableRange(self, value:bool, /, minValue: int = -1, maxValue: int = -1) -> None:
 		self.FilteringRange = value
 		if minValue > -1 and maxValue > -1:
@@ -586,7 +638,10 @@ class PinableRangeOptInFilterProxy(QSortFilterProxyModel):
 		model : QAbstractItemModel = None
 		if self.isRangeEnabled():
 			model = self.sourceModel()
-			value :int = int(model.data(model.index(source_row, self.filterKeyColumn()), Qt.ItemDataRole.DisplayRole))
+			value = -1
+			val = model.data(model.index(source_row, self.filterKeyColumn()), DDITableItemRole.test)
+			if isinstance(val, int):
+				value = val
 			if self.min <= value and value <= self.max:
 				return True
 		elif super().filterAcceptsRow(source_row, source_parent):
@@ -1021,64 +1076,6 @@ class DDISourceFilter(Ui_FilterTab):
 			source.setChecked(False)
 			source.blockSignals(False)
 
-class PrimaryFilter(Ui_ColumnFilter):
-	def __init__(self):
-		super().__init__()
-		self.filterOps : dict[str, set] = {
-			"Action": set(),
-			"Alignment": set(),
-			"Campaign": set(),
-			"Category": set(),
-			"Class": set(),
-			"Group Role": set(),
-			"Kind": set(),
-			"Power Source": set(),
-			"Rarity": set(),
-			"Role": set(),
-			"Size": set(),
-			"Tier": set(),
-			"Type": set(),
-			"Usage": set(),
-			"Mundane": set()
-		}
-
-		self.boxes : list[QComboBox] = []
-		self.Labels : list[str] = []
-		for st, s in self.filterOps.items():
-			s.add('')
-
-	def setupUi(self, ColumnFilter):
-		super().setupUi(ColumnFilter)
-
-		self.boxes.append(self.actionBox)
-		self.boxes.append(self.alignmentBox)
-		self.boxes.append(self.campaignBox)
-		self.boxes.append(self.caregotyBox)
-		self.boxes.append(self.classBox)
-		self.boxes.append(self.gRoleBox)
-		self.boxes.append(self.kindBox)
-		self.boxes.append(self.pSourceBox)
-		self.boxes.append(self.rarityBox)
-		self.boxes.append(self.roleBox)
-		self.boxes.append(self.sizeBox)
-		self.boxes.append(self.tierBox)
-		self.boxes.append(self.typeBox)
-		self.boxes.append(self.usageBox)
-		self.boxes.append(self.mundaneBox)
-
-		self.btnReset.clicked.connect(self.resetFilters)
-
-	def resetFilters(self) -> None:
-		for box in self.boxes:
-			box.setCurrentIndex(0)
-		pass
-
-	def addItemTo(self, filter:str, option:str) -> None:
-		self.filterOps[filter].add(option)
-
-	def renderComboBoxes(self) -> None:
-		for box, label in zip(self.boxes, self.filterOps):
-			box.addItems(list(sorted(self.filterOps[label])))
 
 class DynamicPrimaryFilter(Ui_DynamicColumnFilter):
 	def __init__(self):
@@ -1118,6 +1115,7 @@ class DynamicPrimaryFilter(Ui_DynamicColumnFilter):
 
 	def changeTemplate(self, templateToCall:str):
 		for n in self.ModelFilters:
+			n.enableRange(False)
 			n.setFilterRegularExpression('')
 		self.Templates[templateToCall]()
 
@@ -1127,10 +1125,17 @@ class DynamicPrimaryFilter(Ui_DynamicColumnFilter):
 			if isinstance(item, QComboBox):
 				item.setCurrentIndex(0)
 			elif isinstance(item, tuple):
-				self.CheckBoxes[rangeIndex].setChecked(False)
 				min, max = item
+				min.blockSignals(True)
+				max.blockSignals(True)
+
 				min.setValue(min.minimum())
 				max.setValue(max.maximum())
+
+				min.blockSignals(False)
+				max.blockSignals(False)
+
+				self.CheckBoxes[rangeIndex].setChecked(False)
 				rangeIndex += 1
 
 	def removeCurrentTemplate(self) -> None:
@@ -1147,7 +1152,6 @@ class DynamicPrimaryFilter(Ui_DynamicColumnFilter):
 
 	def createFiltersBoxesFromTemplate(self, boxes:list[str], boxOptions:list[set | range]) -> list[QComboBox | tuple[QSpinBox]]:
 		lastindex : int = 0
-
 		self.removeCurrentTemplate()
 
 		for indexN, box in enumerate(boxes):
@@ -1283,7 +1287,7 @@ class CompendiumScreen(Ui_ScreenView):
 			"Characters Themes": [set()],
 			"Classes": [set(), set(), set(["Strength", "Dexterity", "Constitutiton", "Wisdom", "Intelligence", "Charisma"])],
 			"Companions & Familiars": [set()],
-			"Creatures": [range(0,32), set(), set(), range(0,32), set(), set()],
+			"Creatures": [range(0,36), set(), set(), range(0,275000), set(), set()],
 			"Deities": [set()],
 			"Diseases": [range(0,32)],
 			"Epic Destinies": [set()],
@@ -1291,19 +1295,17 @@ class CompendiumScreen(Ui_ScreenView):
 			"Glossary": [set(), set()],
 			"Items": [set(), set(), range(0,32), range(1, 3125000), set()],
 			"Paragon Paths": [set()],
-			"Poisons": [range(0,32), range(1, 3125000)],
-			"Powers": [range(0,32), set(), set(), set(), set()],
+			"Poisons": [range(5,25), range(50, 156250)],
+			"Powers": [range(0,32), set(), set(), set(), set(['Special'])],
 			"Races": [set(), set()],
-			"Rituals": [range(0,32), range(0,0), range(0,0), set()],
+			"Rituals": [range(0,32), range(0,0), range(0,600000), set()],
 			"Terrains": [set()],
-			"Traps": [set(), set(), range(0,32), range(0,32), set()]
+			"Traps": [set(), set(), range(0,32), range(0,95000), set()]
 		}
 
 		self.populateModel()
 
 		self.setupDDITable()
-
-
 
 		self.SourceFilter = self.createSourceFilterProxy(self.model)
 		self.preMM3Filter = self.createMM3FilterProxy(self.SourceFilter)
@@ -1355,6 +1357,8 @@ class CompendiumScreen(Ui_ScreenView):
 		sFilter = BookmarkbleFilterProxy()
 		sFilter.setFilterKeyColumn(0)
 		sFilter.setFilterRole(DDITableItemRole.Bookmarked)
+		sFilter.setSortRole(DDITableItemRole.test)
+		sFilter.setDynamicSortFilter(True)
 		sFilter.setSourceModel(model)
 		return sFilter
 
@@ -1393,7 +1397,6 @@ class CompendiumScreen(Ui_ScreenView):
 		psFilter = PinableSourceFilterProxy()
 		psFilter.setSourceModel(model)
 		psFilter.setDynamicSortFilter(True)
-		psFilter.setFilterKeyColumn(0)
 		psFilter.setFilterRole(DDITableItemRole.Source)
 		psFilter.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 		return psFilter
@@ -1581,164 +1584,297 @@ class CompendiumScreen(Ui_ScreenView):
 
 	def populateRow(self, row: int, ddiObject: ddiObject) -> None:
 		newItem = QStandardItem(ddiObject.getName())
+		newItem.setData(ddiObject.getName(), DDITableItemRole.test)
 		self.model.setItem(row, 1, newItem)
 
 		match ddiObject.getType():
 			case Types.ASSOCIATE:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeA()))
+				newItem2 = QStandardItem(ddiObject.getTypeA())
+				newItem2.setData(ddiObject.getTypeA(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
 
 				self.templateSets["Companions & Familiars"][0].add(ddiObject.getTypeA())
 			case Types.BACKGROUND:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeB()))
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getCampaign()))
-				self.model.setItem(row, 4, QStandardItem(ddiObject.getPrerequisite()))
-				self.model.setItem(row, 5, QStandardItem(ddiObject.getSkills()))
+				newItem2 = QStandardItem(ddiObject.getTypeB())
+				newItem2.setData(ddiObject.getTypeB(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getCampaign())
+				newItem2.setData(ddiObject.getCampaign(), DDITableItemRole.test)
+				self.model.setItem(row, 3, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getPrerequisite())
+				newItem2.setData(ddiObject.getPrerequisite(), DDITableItemRole.test)
+				self.model.setItem(row, 4, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getSkills())
+				newItem2.setData(ddiObject.getSkills(), DDITableItemRole.test)
+				self.model.setItem(row, 5, newItem2)
+
 
 				self.templateSets["Backgrounds"][0].add(ddiObject.getTypeB())
 				self.templateSets["Backgrounds"][1].add(ddiObject.getCampaign())
-				if ddiObject.getPrerequisite() == None:
-					self.templateSets["Backgrounds"][2].add('')
-				else:
-					self.templateSets["Backgrounds"][2].add(ddiObject.getPrerequisite())
 
-				for string in ddiObject.getSkills().split(', '):
+				for string in ddiObject.getPrerequisite().replace(', or ', ';;').replace(' or ', ';;').replace(', ', ';;').replace(',', ';;').split(';;'):
+					self.templateSets["Backgrounds"][2].add(string)
+
+				for string in ddiObject.getSkills().replace(', ', ';;').replace(',', ';;').split(';;'):
 					self.templateSets["Backgrounds"][3].add(string)
 			case Types.CLASS:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getRole()))
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getPower()))
-				self.model.setItem(row, 4, QStandardItem(ddiObject.getAbilities()))
+				newItem2 = QStandardItem(ddiObject.getRole())
+				newItem2.setData(ddiObject.getRole(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
 
-				self.templateSets["Classes"][0].add(ddiObject.getRole())
+				newItem2 = QStandardItem(ddiObject.getPower())
+				newItem2.setData(ddiObject.getPower(), DDITableItemRole.test)
+				self.model.setItem(row, 3, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getAbilities())
+				newItem2.setData(ddiObject.getAbilities(), DDITableItemRole.test)
+				self.model.setItem(row, 4, newItem2)
+
+				for string in ddiObject.getRole().split(' and '):
+					self.templateSets["Classes"][0].add(string)
 				self.templateSets["Classes"][1].add(ddiObject.getPower())
-				#self.templateSets["Classes"][2].add(ddiObject.getAbilities())
 			case Types.COMPANION:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeC()))
+				newItem2 = QStandardItem(ddiObject.getTypeC())
+				newItem2.setData(ddiObject.getTypeC(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
 
 				self.templateSets["Companions & Familiars"][0].add(ddiObject.getTypeC())
 			case Types.DEITY:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getAlignment()))
+				newItem2 = QStandardItem(ddiObject.getAlignment())
+				newItem2.setData(ddiObject.getAlignment(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
 
 				self.templateSets["Deities"][0].add(ddiObject.getAlignment())
 			case Types.DISEASE:
 				newItem2 = QStandardItem()
 				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+				newItem2.setData(ddiObject.getLevel(), DDITableItemRole.test)
 				self.model.setItem(row, 2, newItem2)
 			case Types.EPICDESTINY:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getPrerequisite()))
+				newItem2 = QStandardItem(ddiObject.getPrerequisite())
+				newItem2.setData(ddiObject.getPrerequisite(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
 
 				self.templateSets["Epic Destinies"][0].add(ddiObject.getPrerequisite())
 			case Types.FEAT:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getTier()))
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getPrerequisite()))
+				newItem2 = QStandardItem(ddiObject.getTier())
+				newItem2.setData(ddiObject.getTier(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getPrerequisite())
+				newItem2.setData(ddiObject.getPrerequisite(), DDITableItemRole.test)
+				self.model.setItem(row, 3, newItem2)
 
 				self.templateSets["Feats"][0].add(ddiObject.getTier())
-				self.templateSets["Feats"][1].add(ddiObject.getPrerequisite())
+
+				for string in ddiObject.getPrerequisite().split(', '):
+					self.templateSets["Feats"][1].add(string)
 			case Types.GLOSSARY:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeG()))
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getCategory()))
+				newItem2 = QStandardItem(ddiObject.getTypeG())
+				newItem2.setData(ddiObject.getTypeG(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getCategory())
+				newItem2.setData(ddiObject.getCategory(), DDITableItemRole.test)
+				self.model.setItem(row, 3, newItem2)
 
 				self.templateSets["Glossary"][0].add(ddiObject.getTypeG())
 				self.templateSets["Glossary"][1].add(ddiObject.getCategory())
 			case Types.ITEM:
-				newItem2 = QStandardItem()
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getCategory()))
+				newItem2 = QStandardItem(ddiObject.getCategory())
+				newItem2.setData(ddiObject.getCategory(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
+
 				if ddiObject.getIsMundane():
-					self.model.setItem(row, 3, QStandardItem("Yes"))
+					newItem2 = QStandardItem("Yes")
+					newItem2.setData("Yes", DDITableItemRole.test)
+					self.model.setItem(row, 3, newItem2)
 					self.templateSets["Items"][1].add("Yes")
 				else:
-					self.model.setItem(row, 3, QStandardItem("No"))
+					newItem2 = QStandardItem("No")
+					newItem2.setData("No", DDITableItemRole.test)
+					self.model.setItem(row, 3, newItem2)
 					self.templateSets["Items"][1].add("No")
-				if ddiObject.getLevel().isnumeric():
-					newItem2.setData(int(ddiObject.getLevel()), Qt.ItemDataRole.DisplayRole)
+
+				newItem2 = QStandardItem(ddiObject.getLevel())
+				level : int = 0
+				if ddiObject.getLevel() == 'Heroic':
+					level = 10
+				elif ddiObject.getLevel() == 'Paragon':
+					level = 11
+				elif ddiObject.getLevel() == 'Epic':
+					level = 21
+				elif ddiObject.getLevel() == 'None':
+					level = 0
 				else:
-					newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+					level = int(ddiObject.getLevel().replace('+', ''))
+				newItem2.setData(level, DDITableItemRole.test)
 				self.model.setItem(row, 4, newItem2)
-				self.model.setItem(row, 5, QStandardItem(ddiObject.getCost()))
-				self.model.setItem(row, 6, QStandardItem(ddiObject.getRarity()))
+
+				newItem2 = QStandardItem(ddiObject.getCost())
+				cost : int = 0
+				if ddiObject.getCost() == 'None':
+					cost = -1
+				else:
+					cost = int(ddiObject.getCost().replace(',', '').replace('.', '').replace('+', '').replace(' gp', ''))
+				newItem2.setData(cost, DDITableItemRole.test)
+				self.model.setItem(row, 5, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getRarity())
+				newItem2.setData(ddiObject.getRarity(), DDITableItemRole.test)
+				self.model.setItem(row, 6, newItem2)
 
 
 				self.templateSets["Items"][0].add(ddiObject.getCategory())
 
 				self.templateSets["Items"][4].add(ddiObject.getRarity())
 			case Types.MONSTER:
-				assert isinstance(ddiObject, Monster)
-				newItem2 = QStandardItem()
-				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+				newItem2 = QStandardItem(str(ddiObject.getLevel()))
+				newItem2.setData(ddiObject.getLevel(), DDITableItemRole.test)
 				self.model.setItem(row, 2, newItem2)
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getRole()))
-				self.model.setItem(row, 4, QStandardItem(ddiObject.getModifier()))
-				newItem3 = QStandardItem()
-				newItem3.setData(ddiObject.getXP(), Qt.ItemDataRole.DisplayRole)
-				self.model.setItem(row, 5, newItem3)
-				self.model.setItem(row, 6, QStandardItem(ddiObject.getSize()))
-				self.model.setItem(row, 7, QStandardItem(ddiObject.getKeywords()))
 
-				self.templateSets["Creatures"][1].add(ddiObject.getRole())
+				newItem2 = QStandardItem(ddiObject.getRole())
+				newItem2.setData(ddiObject.getRole(), DDITableItemRole.test)
+				self.model.setItem(row, 3, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getModifier())
+				newItem2.setData(ddiObject.getModifier(), DDITableItemRole.test)
+				self.model.setItem(row, 4, newItem2)
+
+				newItem2 = QStandardItem(str(ddiObject.getXP()))
+				newItem2.setData(ddiObject.getXP(), DDITableItemRole.test)
+				self.model.setItem(row, 5, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getSize())
+				newItem2.setData(ddiObject.getSize(), DDITableItemRole.test)
+				self.model.setItem(row, 6, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getKeywords())
+				newItem2.setData(ddiObject.getKeywords(), DDITableItemRole.test)
+				self.model.setItem(row, 7, newItem2)
+
+				for string in ddiObject.getRole().split(', '):
+					self.templateSets["Creatures"][1].add(string)
 				self.templateSets["Creatures"][2].add(ddiObject.getModifier())
 				self.templateSets["Creatures"][4].add(ddiObject.getSize())
 			case Types.PARAGONPATH:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getPrerequisite()))
+				newItem2 = QStandardItem(ddiObject.getPrerequisite())
+				newItem2.setData(ddiObject.getPrerequisite(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
 
 				self.templateSets["Paragon Paths"][0].add(ddiObject.getPrerequisite())
 			case Types.POISON:
-				newItem2 = QStandardItem()
-				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+				newItem2 = QStandardItem(str(ddiObject.getLevel()))
+				newItem2.setData(ddiObject.getLevel(), DDITableItemRole.test)
 				self.model.setItem(row, 2, newItem2)
-				self.model.setItem(row, 3, QStandardItem(str(ddiObject.getCost())+" gp"))
+
+				newItem2 = QStandardItem(ddiObject.getCost()+" gp")
+				newItem2.setData(int(ddiObject.getCost()), DDITableItemRole.test)
+				self.model.setItem(row, 3, newItem2)
 			case Types.POWER:
-				newItem2 = QStandardItem()
-				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+				newItem2 = QStandardItem(str(ddiObject.getLevel()))
+				newItem2.setData(ddiObject.getLevel(), DDITableItemRole.test)
 				self.model.setItem(row, 2, newItem2)
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getAction()))
-				self.set1.add(ddiObject.getAction())
-				self.model.setItem(row, 4, QStandardItem(ddiObject.getClass()))
-				self.set2.add(ddiObject.getClass())
-				self.model.setItem(row, 5, QStandardItem(ddiObject.getKind()))
-				self.model.setItem(row, 6, QStandardItem(ddiObject.getUsage()))
+
+
+				newItem2 = QStandardItem(ddiObject.getAction())
+				newItem2.setData(ddiObject.getAction(), DDITableItemRole.test)
+				self.model.setItem(row, 3, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getClass())
+				newItem2.setData(ddiObject.getClass(), DDITableItemRole.test)
+				self.model.setItem(row, 4, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getKind())
+				newItem2.setData(ddiObject.getKind(), DDITableItemRole.test)
+				self.model.setItem(row, 5, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getUsage())
+				newItem2.setData(ddiObject.getUsage(), DDITableItemRole.test)
+				self.model.setItem(row, 6, newItem2)
 
 				self.templateSets["Powers"][1].add(ddiObject.getAction())
 				self.templateSets["Powers"][2].add(ddiObject.getClass())
 				self.templateSets["Powers"][3].add(ddiObject.getKind())
-				self.templateSets["Powers"][4].add(ddiObject.getUsage())
-			case Types.RACE:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getDescription()))
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getSize()))
+				for string in ddiObject.getUsage().replace(' (Special)', '').split(','):
+					self.templateSets["Powers"][4].add(string)
 
-				self.templateSets["Races"][0].add(ddiObject.getDescription())
+			case Types.RACE:
+				newItem2 = QStandardItem(ddiObject.getDescription())
+				newItem2.setData(ddiObject.getDescription(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getSize())
+				newItem2.setData(ddiObject.getSize(), DDITableItemRole.test)
+				self.model.setItem(row, 3, newItem2)
+
+				for string in ddiObject.getDescription().replace('+2 ', '').split(', '):
+					self.templateSets["Races"][0].add(string)
 				self.templateSets["Races"][1].add(ddiObject.getSize())
 			case Types.RITUAL:
-				newItem2 = QStandardItem()
-				newItem2.setData(ddiObject.getLevel(), Qt.ItemDataRole.DisplayRole)
+				newItem2 = QStandardItem(str(ddiObject.getLevel()))
+				newItem2.setData(ddiObject.getLevel(), DDITableItemRole.test)
 				self.model.setItem(row, 2, newItem2)
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getComponent()))
-				newItem3 = QStandardItem()
-				newItem3.setData(ddiObject.getPrice(), Qt.ItemDataRole.DisplayRole)
-				self.model.setItem(row, 4, newItem3)
-				self.model.setItem(row, 5, QStandardItem(ddiObject.getKeySkill()))
+
+				newItem2 = QStandardItem(ddiObject.getComponent())
+				newItem2.setData(ddiObject.getComponent(), DDITableItemRole.test)
+				self.model.setItem(row, 3, newItem2)
+
+				newItem2 = QStandardItem(str(ddiObject.getPrice())+' gp')
+				newItem2.setData(ddiObject.getPrice(), DDITableItemRole.test)
+				self.model.setItem(row, 4, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getKeySkill())
+				newItem2.setData(ddiObject.getKeySkill(), DDITableItemRole.test)
+				self.model.setItem(row, 5, newItem2)
+
+				for string in ddiObject.getKeySkill().split(' or '):
+					self.templateSets["Rituals"][3].add(string)
 			case Types.TERRAIN:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeT()))
+				newItem2 = QStandardItem(ddiObject.getTypeT())
+				newItem2.setData(ddiObject.getTypeT(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
+
 				self.templateSets["Terrains"][0].add(ddiObject.getTypeT())
 			case Types.THEME:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getPrerequisite()))
+				newItem2 = QStandardItem(ddiObject.getPrerequisite())
+				newItem2.setData(ddiObject.getPrerequisite(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
 
 				self.templateSets["Characters Themes"][0].add(ddiObject.getPrerequisite())
 			case Types.TRAP:
-				self.model.setItem(row, 2, QStandardItem(ddiObject.getTypeT()))
-				self.model.setItem(row, 3, QStandardItem(ddiObject.getRole()))
+				newItem2 = QStandardItem(ddiObject.getTypeT())
+				newItem2.setData(ddiObject.getTypeT(), DDITableItemRole.test)
+				self.model.setItem(row, 2, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getRole())
+				newItem2.setData(ddiObject.getRole(), DDITableItemRole.test)
+				self.model.setItem(row, 3, newItem2)
+
 				if ddiObject.getLevel().isnumeric():
-					newItem2 = QStandardItem()
-					newItem2.setData(int(ddiObject.getLevel()), Qt.ItemDataRole.DisplayRole)
+					newItem2 = QStandardItem(ddiObject.getLevel())
+					newItem2.setData(int(ddiObject.getLevel()), DDITableItemRole.test)
 					self.model.setItem(row, 4, newItem2)
 				else:
-					self.model.setItem(row, 4, QStandardItem("*"))
+					newItem2 = QStandardItem('*')
+					newItem2.setData(0, DDITableItemRole.test)
+					self.model.setItem(row, 4, newItem2)
 
 				if ddiObject.getXP() != -1:
-					newItem3 = QStandardItem()
-					newItem3.setData(ddiObject.getXP(), Qt.ItemDataRole.DisplayRole)
-					self.model.setItem(row, 5, newItem3)
+					newItem2 = QStandardItem(str(ddiObject.getXP()))
+					newItem2.setData(ddiObject.getXP(), DDITableItemRole.test)
+					self.model.setItem(row, 5, newItem2)
 				else:
-					self.model.setItem(row, 5, QStandardItem("*"))
-				self.model.setItem(row, 6, QStandardItem(ddiObject.getClasse()))
+					newItem2 = QStandardItem('*')
+					newItem2.setData(0, DDITableItemRole.test)
+					self.model.setItem(row, 5, newItem2)
+
+				newItem2 = QStandardItem(ddiObject.getClasse())
+				newItem2.setData(ddiObject.getClasse(), DDITableItemRole.test)
+				self.model.setItem(row, 6, newItem2)
 
 				self.templateSets["Traps"][0].add(ddiObject.getTypeT())
 				self.templateSets["Traps"][1].add(ddiObject.getRole())
