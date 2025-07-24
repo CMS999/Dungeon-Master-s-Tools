@@ -1,43 +1,37 @@
-# Dungeon Master's Tools
-[![en](https://img.shields.io/badge/lang-pt--br-green)](README.md)
----
-[![ToDoList](https://img.shields.io/badge/Go%20To-To--Do%20List-blue)](ToDo-en.md)
+## Concept
+This project was developed intuitively to test a desktop application for use in *D&D 4e and other RPGs* by *Dungeon Masters*, one that was easy to maintain and expand. To this end, the program has basic functionality for reading *SQL* files from the old *D&D Insiders* service and displaying this data in tables, allowing filtering, searching, and sorting. It also has the ability to load user-created plugins.
 
+## Prerequisites and Resources
+The project uses Python 3.10.12, plus two external libraries:
+- PySide6, available at ([PyPi](https://pypi.org/project/PySide6/))
+- Yapsy, available at ([PyPi](https://pypi.org/project/Yapsy/))
 
-## Conceito
-Esse projeto foi desenvolvido com intuíto de prover uma aplicação desktop, para uso em *D&D 4e e outros RPGs* por *Dungeon Masters*, que fosse de fácil manuntenbilidade e expansível. Para tal o programa dispõe de uma funcionalidade básica para ler arquivos *sql* do antigo serviço *D&D Insiders* e mostrar esses dados em tabelas, permitindo filtragem, busca e ordenação. Além, de dispor da capacidade de carregar *plugins* feitos por usuários.
+## Step by Step
+text
 
-## Pré-requisitos e recursos
-O projeto utiliza python 3.10.12, além de duas bibliotecas externas:
-- PySide6, disponível em ([PyPi](https://pypi.org/project/PySide6/))
-- yapsy, disponível em ([PyPi](https://pypi.org/project/Yapsy/))
-
-## Passo a Passo
-texto
-
-## Instalação
-- Clone o projeto pelo git, ou faça o download pelo Github:
+## Installation
+- Clone the project via Git, or download it from Github:
 ``` bash
 git clone https://github.com/CMS999/Dungeon-Master-s-Tools.git
 ```
-- ou
+- or
 ``` bash
 git clone git@github.com:CMS999/Dungeon-Master-s-Tools.git
 ```
 
-## Execução
-- Na pasta raiz do projeto execute o arquivo main.py
+## Execution
+- In the project root folder, run the main.py file
 ``` bash
 python main.py
 ```
-- ou 
+- or
 ``` bash
 py main.py
 ```
-## Bugs
-Texto
+## Errors
+Text
 
-## Autor
+## Author
 - Cauã Marques da Silva ([GitHub](https://github.com/CMS999))
 
-## Imagens
+## Images

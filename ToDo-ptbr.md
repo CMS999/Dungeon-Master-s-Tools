@@ -1,16 +1,11 @@
 # TO-DO List
-- [ ] Create class to handle all file strings, base64 images and any type of string swaps (like regex);
-- [x] Create method(s) in MainScreenView to handle model inicialization;
-- [ ] Rework Context Menu logic to Handle action additon of new action by function call;
-- [x] Integrate PickleJar logic inside MainScreenView;
-- [x] Create new Class to handle all html rendering;
-- [ ] Rework MainScreenView filtering logic;
-- [x] Integrate MainScreenView inside main aplication (a.k.a. stop beign a plugin);
-- [ ] Define main.py API for handling compendium data calls, contexts menu action, tool bars and others...;
-- [ ] Define directory scruture for ui files and their pythons counter-parts;
-- [ ] Expand plugin interfaces for different use cases;
-- [ ] Do performance analising;
-- [x] Refactor Enum logic;
-- [x] Refactor Compendium small Modules in bigger Modules
-- [ ] Implement options menu for each tab
-- [ ] Make new source filter for Compendium (filter pre-MM3 and by source)
+- [ ] Retrabalhar a lógica de inicialização da tabela principal;
+- [ ] Retrabalhar a lógica da criação dos filtros dinâmicos;
+- [ ] Retrabalhar/separar os processos da classe *CompendiumScreen*;
+- [ ] Retrabalhar a lógica da classe *Parser*, para substituir *strings* inúteis por, *strings* padrões, mais úteis durante filtragem;
+- [ ] Retrabalhar a lógica da classe *MainWindow* para não chamar diretamente a classe *CompendiumScreen*;
+- [ ] Integrar e separar classes como *CompendiumScreen* em uma categoria separada da aplicação principal e dos plugins;
+- [ ] Incluir a capacidade de plugins expandirem o menu de contexto (*Right click menu*);
+- [ ] Separar a lógica das classes *CompendiumScreen*, *MainWindow* e plugins para criar um classe/interface de API;
+- [ ] Realizar análise de performance e testes para identificar possíveis problemas e gargalos;
+- [ ] Incluir os arquivos .ui em pastas separadas.

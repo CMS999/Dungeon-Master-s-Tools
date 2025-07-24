@@ -1,16 +1,11 @@
 # TO-DO List
-- [ ] Create class to handle all file strings, base64 images and any type of string swaps (like regex);
-- [x] Create method(s) in MainScreenView to handle model inicialization;
-- [ ] Rework Context Menu logic to Handle action additon of new action by function call;
-- [x] Integrate PickleJar logic inside MainScreenView;
-- [x] Create new Class to handle all html rendering;
-- [ ] Rework MainScreenView filtering logic;
-- [x] Integrate MainScreenView inside main aplication (a.k.a. stop beign a plugin);
-- [ ] Define main.py API for handling compendium data calls, contexts menu action, tool bars and others...;
-- [ ] Define directory scruture for ui files and their pythons counter-parts;
-- [ ] Expand plugin interfaces for different use cases;
-- [ ] Do performance analising;
-- [x] Refactor Enum logic;
-- [x] Refactor Compendium small Modules in bigger Modules
-- [ ] Implement options menu for each tab
-- [ ] Make new source filter for Compendium (filter pre-MM3 and by source)
+- [ ] Rework the main table initialization logic;
+- [ ] Rework the logic for creating dynamic filters;
+- [ ] Rework/separate the processes of the *CompendiumScreen* class;
+- [ ] Rework the logic of the *Parser* class to replace useless *strings* with more useful standard *strings*, for better filtering;
+- [ ] Rework the logic of the *MainWindow* class to no longer directly call the *CompendiumScreen* class;
+- [ ] Integrate and separate classes like *CompendiumScreen* into a separate category from the main application and plugins;
+- [ ] Include the ability for plugins to expand the context menu (*Right-click menu*);
+- [ ] Separate the logic of the *CompendiumScreen*, *MainWindow*, and plugin classes to create an API class/interface; 
+Perform performance analysis and testing to identify potential problems and bottlenecks;
+- [ ] Include .ui files in separate folders.
