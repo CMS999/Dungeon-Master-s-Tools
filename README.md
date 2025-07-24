@@ -1,8 +1,7 @@
 # Dungeon Master's Tools
-[![en](https://img.shields.io/badge/lang-pt--br-green)](README.md)
+[![en](https://img.shields.io/badge/lang-pt--br-green)](README.us.md)
 ---
-[![ToDoList](https://img.shields.io/badge/Go%20To-To--Do%20List-blue)](ToDo-en.md)
-
+[![ToDoList](https://img.shields.io/badge/Go%20To-To--Do%20List-blue)](ToDo-ptbr.md)
 
 ## Conceito
 Esse projeto foi desenvolvido com intuíto de prover uma aplicação desktop, para uso em *D&D 4e e outros RPGs* por *Dungeon Masters*, que fosse de fácil manutenibilidade e expansível. Para tal o programa dispõe de uma funcionalidade básica para ler arquivos *sql* do antigo serviço *D&D Insiders* e mostrar esses dados em tabelas, permitindo filtragem, busca e ordenação. Além, de dispor da capacidade de carregar *plugins* feitos por usuários.

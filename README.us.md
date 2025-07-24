@@ -1,3 +1,8 @@
+# Dungeon Master's Tools
+[![en](https://img.shields.io/badge/lang-pt--br-green)](README.md)
+---
+[![ToDoList](https://img.shields.io/badge/Go%20To-To--Do%20List-blue)](ToDo-en.md)
+
 ## Concept
 This project was developed intuitively to test a desktop application for use in *D&D 4e and other RPGs* by *Dungeon Masters*, one that was easy to maintain and expand. To this end, the program has basic functionality for reading *SQL* files from the old *D&D Insiders* service and displaying this data in tables, allowing filtering, searching, and sorting. It also has the ability to load user-created plugins.
 
