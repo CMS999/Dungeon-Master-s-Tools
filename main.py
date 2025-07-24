@@ -94,6 +94,7 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
 	QCoreApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
 	app = QApplication([])
+	app.setStyle('Fusion')
 	window = MainWindow()
 	window.show()
 	sys.exit(app.exec())

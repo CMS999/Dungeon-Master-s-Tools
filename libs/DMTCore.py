@@ -81,7 +81,7 @@ class DDIParser:
 	def parseFile(self, file: Files, sDict: dict, sQueue: Queue):
 		linesInFile : list[str] = []
 		try:
-			with open(os.path.join(os.getcwd(), self.sqlPath, file.file), 'r') as ddiFile:
+			with open(os.path.join(os.getcwd(), self.sqlPath, file.file), 'r', encoding='utf8') as ddiFile:
 				for lineOfFile in ddiFile:
 					if lineOfFile.startswith("INSERT"):
 						lineOfFile = lineOfFile.strip()
