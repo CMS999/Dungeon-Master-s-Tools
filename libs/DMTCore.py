@@ -53,7 +53,7 @@ class Serializer:
 
 class DDIParser:
 	def __init__(self):
-		self.sqlPath = "sql/"
+		self.sqlPath = "sql"
 		self.stripHTML = ["\\r", "\\n", "\\"]
 		self.sqlDDITypes : dict[str:list] = {
 			"Associate": [],
@@ -81,7 +81,7 @@ class DDIParser:
 	def parseFile(self, file: Files, sDict: dict, sQueue: Queue):
 		linesInFile : list[str] = []
 		try:
-			with open(self.sqlPath + file.file, 'r') as ddiFile:
+			with open(os.path.join(os.getcwd(), self.sqlPath, file.file), 'r') as ddiFile:
 				for lineOfFile in ddiFile:
 					if lineOfFile.startswith("INSERT"):
 						lineOfFile = lineOfFile.strip()
@@ -89,7 +89,7 @@ class DDIParser:
 						lineOfFileEnd = len(lineOfFile)-3
 						linesInFile.append(lineOfFile[lineOfFileStart:lineOfFileEnd])
 		except:
-			print("No such file:" + self.sqlPath + file.file)
+			print("No such file:" + os.path.join(os.getcwd(), self.sqlPath, file.file))
 
 		for lineOfFile in linesInFile:
 			lineTokens = lineOfFile.split("','")
