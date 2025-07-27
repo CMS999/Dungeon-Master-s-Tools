@@ -5,7 +5,9 @@
 - [ ] Retrabalhar a lógica da classe *Parser*, para substituir *strings* inúteis por, *strings* padrões, mais úteis durante filtragem;
 - [ ] Retrabalhar a lógica da classe *MainWindow* para não chamar diretamente a classe *CompendiumScreen*;
 - [ ] Integrar e separar classes como *CompendiumScreen* em uma categoria separada da aplicação principal e dos plugins;
-- [ ] Incluir a capacidade de plugins expandirem o menu de contexto (*Right click menu*);
 - [ ] Separar a lógica das classes *CompendiumScreen*, *MainWindow* e plugins para criar um classe/interface de API;
+- [ ] Na API, incluir funcionalidades para controlar a *QMenuBar*, *QToolBar* e a *QStatusBar*;
+- [ ] Incluir a capacidade de plugins expandirem o menu de contexto (*Right click menu*);
+- [ ] Expandir a funcionalidade dos plugins (mais classes e melhor API);
 - [ ] Realizar análise de performance e testes para identificar possíveis problemas e gargalos;
 - [ ] Incluir os arquivos .ui em pastas separadas.
