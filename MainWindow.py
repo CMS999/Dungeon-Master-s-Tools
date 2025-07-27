@@ -46,22 +46,22 @@ class Ui_MainWindow(object):
 		self.horizontalLayout_8.addWidget(self.Tabs)
 
 		MainWindow.setCentralWidget(self.centralwidget)
-		self.menubar = QMenuBar(MainWindow)
+		""" self.menubar = QMenuBar(MainWindow)
 		self.menubar.setObjectName(u"menubar")
 		self.menubar.setGeometry(QRect(0, 0, 800, 23))
 		self.menuOptions = QMenu(self.menubar)
 		self.menuOptions.setObjectName(u"menuOptions")
 		self.menuTest = QMenu(self.menubar)
 		self.menuTest.setObjectName(u"menuTest")
-		MainWindow.setMenuBar(self.menubar)
+		MainWindow.setMenuBar(self.menubar) """
 		self.statusbar = QStatusBar(MainWindow)
 		self.statusbar.setObjectName(u"statusbar")
 		MainWindow.setStatusBar(self.statusbar)
 
-		self.menubar.addAction(self.menuOptions.menuAction())
-		self.menubar.addAction(self.menuTest.menuAction())
+		""" self.menubar.addAction(self.menuOptions.menuAction())
+		self.menubar.addAction(self.menuTest.menuAction()) 
 		self.menuOptions.addAction(self.actionchange)
-
+		"""
 		self.retranslateUi(MainWindow)
 
 		self.Tabs.setCurrentIndex(-1)
@@ -74,7 +74,7 @@ class Ui_MainWindow(object):
 		MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"Dungeon Master Tools", None))
 		self.actionchange.setText(QCoreApplication.translate("MainWindow", u"change", None))
 		self.actionTetst.setText(QCoreApplication.translate("MainWindow", u"Tetst", None))
-		self.menuOptions.setTitle(QCoreApplication.translate("MainWindow", u"Options", None))
-		self.menuTest.setTitle(QCoreApplication.translate("MainWindow", u"Test", None))
+		#self.menuOptions.setTitle(QCoreApplication.translate("MainWindow", u"Options", None))
+		#self.menuTest.setTitle(QCoreApplication.translate("MainWindow", u"Test", None))
 	# retranslateUi
 

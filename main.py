@@ -16,12 +16,15 @@ class MainWindow(QMainWindow):
 		self.toolList : list[QToolBar] = []
 		self.ui = Ui_MainWindow()
 		self.ui.setupUi(self)
-
+		if not os.path.isdir(os.path.join(os.getcwd(),"Modules")):
+			os.makedirs(os.path.join(os.getcwd(),"Modules"))
+		
 		self.Compendium = CompendiumScreen()
 		self.Compendium.setupUi(self.createTab('Compendium'))
 		self.ui.Tabs.currentChanged.connect(self.currentToolBar)
 		self.createToolBar('Compendium')
 		self.Compendium.registerRowCounter(self.statusBar())
+		
 		if len(self.toolList) > 0:
 			self.toolList[0].setStyleSheet(''' QToolBar::separator{width: 20px} ''')
 			self.toolList[0].addWidget(self.Compendium.createFilterBox())
@@ -33,8 +36,7 @@ class MainWindow(QMainWindow):
 			self.toolList[0].addWidget(self.Compendium.createBookmarkButton())
 			self.toolList[0].addSeparator()
 			self.toolList[0].addWidget(self.Compendium.createFilters())
-		if not os.path.isdir('Modules'):
-			os.makedirs("Modules")
+		
 		self.PluginManager = PluginManager()
 		self.loadPlugins()
 		self.addPluginsTabs()
@@ -73,9 +75,10 @@ class MainWindow(QMainWindow):
 		for index, bar in enumerate(self.toolList):
 			self.toolList[index].hide()
 		self.toolList[self.ui.Tabs.currentIndex()].show()
+		self.statusBar().clearMessage()
 
 	def loadPlugins(self) -> None:
-		self.PluginManager.setPluginPlaces([os.getcwd()+"/Modules"])
+		self.PluginManager.setPluginPlaces([os.path.join(os.getcwd(),"Modules")])
 		self.PluginManager.setCategoriesFilter({
 			"Main": MainPlugin
 		})
