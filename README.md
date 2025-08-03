@@ -7,9 +7,11 @@
 Esse projeto foi desenvolvido com intuíto de prover uma aplicação desktop, para uso em *D&D 4e e outros RPGs* por *Dungeon Masters*, que fosse de fácil manutenibilidade e expansível. Para tal, o programa dispõe de uma funcionalidade básica para ler arquivos *sql* do antigo serviço *D&D Insiders* e mostrar esses dados em tabelas permitindo filtragem, busca e ordenação. Além, de dispor da capacidade de carregar *plugins* feitos por usuários.
 
 ## Pré-requisitos e recursos
-O projeto utiliza Python 3.10.12, além de duas bibliotecas externas:
-- PySide6, disponível em ([PyPi](https://pypi.org/project/PySide6/))
+O projeto utiliza Python 3.10.12 (verções mais novas podem não dar suporte a biblioteca Yapsy), além de duas bibliotecas externas:
+- PySide6 (versão 6.8.3), disponível em ([PyPi](https://pypi.org/project/PySide6/))
 - yapsy, disponível em ([PyPi](https://pypi.org/project/Yapsy/))
+
+Essa aplicação foi desenvolvida para ler os arquivos de dados (em SQL) do antigo serviço Dungeons and Dragons Insiders (DDI), esse serviço **não** está mais disponível. Para utilizar a parte base da aplicação é necessário uma cópia desses arquivos (por serem propriedade da Wizards of the Coast, não podem ser compartilhados aqui), entretanto a aplicação ainda vai iniciar e carregar plugins normalmente sem os arquivos (já há planos para adicionar a capacidade de detectar se o usuário possuí esses arquivos e desativar qualquer funcionamento que necessite deles).
 
 ## Passo a Passo
 O projeto se deu da vontade de implementar uma alternativa ao software, baseado em java/javaFx, *Portable D&D Compendium* (infeliz indisponível para compartilhamento aqui). O processo de implementação se deu através de:
@@ -39,6 +41,7 @@ Alguns bugs já são conhecidos, mas devido a natureza do projeto espera-se enco
 - A funcionalidade das *QToolBar* de cada aba, não funciona apropriadamente, abas sem um *QToolBar* associado geram uma *QToolbar* "fantasma";
 - Mudar para aba Filtros enquanto uma entrada da tabela está selecionada faz com que cada filtragem altere o display para o *HTMLRender*;
 - Alguns textos e ícones ainda são temporários/*placeholders* (Ex.: o ícone da aplicação no canto superior esquerdo é o padrão do sistema);
+- A versão mais nova do PySide6 (pelo menos até 03/08/2025), possuí um bug em relação a QtWebEngine em linux o que gera bugs visuais;
 - O programa não foi testado em nenhum momento em Windows e, embora, ele execute, é possível que diferenças de sistemas operacionais apareçam (Ex.: foi necessário adicionar um estilo 'Fusion' no app em *main.py*, pois o estilo padrão do Windows não estava sendo aplicado, como é no linux).
 
 ## Autor
